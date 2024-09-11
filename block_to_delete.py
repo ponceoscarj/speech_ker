@@ -1,13 +1,7 @@
-# with open('asr_work_dir/asr_outcomes/parakeet_tdt.txt','r') as f:
-#     text = f.readlines()
-#     print(text)
-#     print(type(text))
+from create_manifest import create_manifest
+from overall_variables import DATA_DIR, WORK_DIR, ROOT
 
 
-with open('outputs/pred_rttms/toy2.rttm','r') as f:
-    text = f.readlines()
-    print(text)
-    print(type(text))
-
-    for i in text:
-        print(i)
+output_manifest_name = 'asr_manifest'
+create_manifest(data_dir= DATA_DIR, duration=None, work_dir= WORK_DIR, 
+                output_file_name=output_manifest_name, type='asr')

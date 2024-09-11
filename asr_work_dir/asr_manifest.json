@@ -1,20 +1,2 @@
-[
-    {
-        "audio_filepath": "Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files/toy2.wav",
-        "duration": null,
-        "taskname": "asr",
-        "source_lang": "en",
-        "target_lang": "en",
-        "pnc": "yes",
-        "answer": "na"
-    },
-    {
-        "audio_filepath": "Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files/toy1.wav",
-        "duration": null,
-        "taskname": "asr",
-        "source_lang": "en",
-        "target_lang": "en",
-        "pnc": "yes",
-        "answer": "na"
-    }
-]
+{"audio_filepath": "/Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files/toy2.wav", "duration": null, "taskname": "asr", "source_lang": "en", "target_lang": "en", "pnc": "yes", "answer": "na"}
+{"audio_filepath": "/Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files/toy1.wav", "duration": null, "taskname": "asr", "source_lang": "en", "target_lang": "en", "pnc": "yes", "answer": "na"}

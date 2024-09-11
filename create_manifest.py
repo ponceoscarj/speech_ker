@@ -2,7 +2,7 @@ import json
 import os
 # from overall_variables import DATA_DIR, WORK_DIR
 
-def create_manifest(data_dir, duration, work_dir, output_file_name, type, url_transcript_text):
+def create_manifest(data_dir, duration, work_dir, output_file_name, type, url_transcript_text=None):
     manifest_data = []
 
     for i, wav_file in enumerate(os.listdir(data_dir)):
@@ -42,7 +42,10 @@ def create_manifest(data_dir, duration, work_dir, output_file_name, type, url_tr
         os.makedirs(work_dir)
 
     with open(manifest_new_filepath, 'w', encoding='utf-8') as f:
-        json.dump(manifest_data, f, indent=4)
+        for i in manifest_data:
+            f.write(json.dumps(i))
+            f.write('\n')
+        # json.dump(manifest_data, f, indent=4)
 
 
 
