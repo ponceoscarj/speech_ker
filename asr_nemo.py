@@ -1,19 +1,21 @@
 import nemo.collections.asr as nemo_asr
 import os
 from create_manifest import create_manifest
-from overall_variables import DATA_DIR, WORK_DIR, ROOT
+from utils import DATA_DIR, WORK_DIR, ROOT
 from omegaconf import OmegaConf, open_dict
 import nemo.collections.nlp as nemo_nlp
+import re
 
 asr_model = nemo_asr.models.EncDecRNNTBPEModel.from_pretrained(model_name="nvidia/parakeet-tdt-1.1b")
 
 output_manifest_name = 'asr_manifest'
-if os.path.isfile(f'{WORK_DIR}/{output_manifest_name}.json'): 
-    None
-else:
-    create_manifest(data_dir= DATA_DIR, duration=None, work_dir= WORK_DIR, output_file_name=output_manifest_name)
 
-# print(os.path.join(WORK_DIR, f'{output_manifest_name}.json'))
+
+create_manifest(data_dir= DATA_DIR, duration=None, work_dir= WORK_DIR, output_file_name=output_manifest_name, type="asr")
+
+
+
+# # print(os.path.join(WORK_DIR, f'{output_manifest_name}.json'))
 
 
 #obtain all audio files to be transcribed
@@ -23,28 +25,62 @@ for file in os.listdir(f'{DATA_DIR}'):
 
 print(lst_audio)
 
-# predicted_text = asr_model.transcribe(
-#     audio=f"ask_work_dir/{output_manifest_name}.json",
-#     batch_size=16,  # batch size to run the inference with
-# )
+# # predicted_text = asr_model.transcribe(
+# #     audio=f"ask_work_dir/{output_manifest_name}.json",
+# #     batch_size=16,  # batch size to run the inference with
+# # )
 
 
-# load model for punctuation
-punctuation = nemo_nlp.models.PunctuationCapitalizationModel.from_pretrained(model_name='punctuation_en_distilbert')
+# # load model for punctuation
+punctuation = nemo_nlp.models.PunctuationCapitalizationModel.from_pretrained(model_name='punctuation_en_bert')
 
-# update decoding config to preserve alignments and compute timestamps
-# decoding_cfg = asr_model.cfg.decoding
-# with open_dict(decoding_cfg):
-#     decoding_cfg.preserve_alignments = True
-#     decoding_cfg.compute_timestamps = True
-#     asr_model.change_decoding_strategy(decoding_cfg)
+
 
 predicted_text = asr_model.transcribe(
     paths2audio_files=lst_audio,
     batch_size=16)
 
-# Add punctuation
-predicted_text = punctuation.add_punctuation_capitalization([predicted_text])[0]
+# print(predicted_text)
+# print(predicted_text[0])
+
+# # Add punctuation + save
+# with open(f'{WORK_DIR}/asr_outcomes/parakeet_tdt.txt', 'w') as f:
+#     for i in predicted_text[0]: 
+#         # i = punctuation.add_punctuation_capitalization([i])[0]
+#         f.write(i+'\n')
+
+
+with open('asr_work_dir/asr_outcomes/parakeet_tdt.txt', "r") as f:
+    text = f.readlines()
+    # print(text)
+    create_punct = []
+    # align_file = []
+    for i in text:
+        print(i.rstrip())
+        i = i.rstrip()
+        i = punctuation.add_punctuation_capitalization([i])
+        create_punct.append(i)
+        # align_i = i.replace(".", "|")
+        # align_file.append(align_i)
+    
+    with open('asr_work_dir/asr_outcomes/parakeet_tdt_punct.txt', "w") as f:
+        for i in create_punct:
+            f.write(i[0]+'\n')
+
+    with open('asr_work_dir/asr_outcomes/parakeet_tdt_align.txt', "w") as f:
+        for i in create_punct:
+            new_line = re.sub(r"\?|\!|\.", "|", i[0])
+            f.write(new_line+'\n')
+
+
+# PUNCTUATION + CAPITALIZATION
+# punctuation = nemo_nlp.models.PunctuationCapitalizationModel.from_pretrained(model_name='punctuation_en_bert')
+
+
+
+
+
+
 
 
 # if hypotheses form a tuple (from RNNT), extract just "best" hypotheses
@@ -61,9 +97,6 @@ predicted_text = punctuation.add_punctuation_capitalization([predicted_text])[0]
 #     print(i)
 
 
-with open(f'{WORK_DIR}/asr_outcomes/parakeet_tdt.txt', 'w') as f:
-    for i in predicted_text[0]: 
-        f.write(i+'\n')
 
 
 

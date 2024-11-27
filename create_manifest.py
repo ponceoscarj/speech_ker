@@ -1,6 +1,6 @@
 import json
 import os
-# from overall_variables import DATA_DIR, WORK_DIR
+from utils import DATA_DIR, WORK_DIR
 
 def create_manifest(data_dir, duration, work_dir, output_file_name, type, url_transcript_text=None):
     manifest_data = []
@@ -8,6 +8,7 @@ def create_manifest(data_dir, duration, work_dir, output_file_name, type, url_tr
     for i, wav_file in enumerate(os.listdir(data_dir)):
         if wav_file.endswith('.wav'):
             wav_file_base = os.path.splitext(wav_file)[0]
+            # print(wav_file)
             # print(wav_file_base)
 
             if type == "asr":
@@ -19,7 +20,8 @@ def create_manifest(data_dir, duration, work_dir, output_file_name, type, url_tr
                 with open(url_transcript_text,'r') as f:
                     text = f.readlines()
                     entry = {"audio_filepath": os.path.join(data_dir, wav_file), "duration": None, 
-                    "offset": 0, "label": "infer", "text": text[i], "num_speakers": None}
+                    "offset": 0, "label": "infer", "text": text[i], "num_speakers": None,
+                    "rttm_filepath": None, "uem_filepath": None}
             
             elif type == 'aligner':
                 with open(url_transcript_text,'r') as f:
@@ -49,6 +51,7 @@ def create_manifest(data_dir, duration, work_dir, output_file_name, type, url_tr
 
 
 
-# if __name__ == "__main__":
-    # create_manifest(data_dir=DATA_DIR, text='-', offset=0, duration=None, 
-    #                 label='infer', work_dir=WORK_DIR)
+if __name__ == "__main__":
+    None
+    # create_manifest(data_dir=DATA_DIR, duration=None, 
+    #                  work_dir=WORK_DIR)
