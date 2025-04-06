@@ -62,12 +62,12 @@ All ASR models need to run with a manifest file. This is latter introduced in th
 Use the `create_manifest.py` code and the `type` parameter should be `asr`.
 
 ## Download models
-You need to install huggingface-cli:
+You need huggingface-cli:
 ```bash
 pip install -U "huggingface_hub[cli]"
 ```
 
-To download models:
+Download models form huggingface:
 ```bash
 huggingface-cli download [REPO_ID] --include [FILE_NAME] --local-dir [SAVE_DIR]
 ```
