@@ -27,27 +27,8 @@ Working with manifest
 - create_manifest.py: All models require this file to create a manifest
 
 
-## Patient-doctor conversations
+## Patient-doctor conversations - toy examples
 
 - OSCE conversations: https://springernature.figshare.com/articles/dataset/Collection_of_simulated_medical_exams/16550013?backTo=%2Fcollections%2FA_dataset_of_simulated_patient-physician_medical_interviews_with_a_focus_on_respiratory_cases%2F5545842&file=30598530
 
 - Primock57: https://github.com/babylonhealth/primock57
-
-
-## ASR scripts
-
-asr_nemo_ctc.py:
-python asr_nemo_ctc.py \
-  --model stt_en_conformer_ctc_small \
-  --device cuda \
-  --output_folder ./transcripts \
-  --input_folder ./audio_files \
-  --chunk_len 30.0 \
-  --context_len 10.0
-
---model: Specify any NeMo ASR model (default: stt_en_conformer_ctc_small)
---device: Choose between 'cuda' or 'cpu'
---output_folder: Root directory for transcriptions
---input_folder: Directory with audio files to process
---chunk_len: Audio chunk length in seconds
---context_len: Context window size in seconds
