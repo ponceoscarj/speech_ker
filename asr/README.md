@@ -39,14 +39,14 @@ Brief description of the models from NVIDIA NeMo.
 
 ## Instructions
 Create conda environment with python 3.10.12 - more stable
-```console
+```bash
 conda create --name nemo python==3.10.12
 conda activate nemo
 ```
 
 Install latest torch - check your CUDA version [here](https://pytorch.org/get-started/locally/)
 
-```console
+```bash
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 ```
 
