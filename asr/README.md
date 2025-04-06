@@ -136,7 +136,7 @@ python speech_to_text_buffered_infer_rnnt.py \
 
 ### AED Example - aed_chunked_infer
 
-```console
+```bash
 python speech_to_text_aed_chunked_infer.py \
     model_path=null \
     pretrained_name="nvidia/canary-1b-flash" \
