@@ -47,7 +47,7 @@ conda activate nemo
 Install latest torch - check your CUDA version [here](https://pytorch.org/get-started/locally/)
 
 ```bash
-conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+pip install torch torchvision torchaudio
 ```
 
 Install NeMO from main branch + dependencies
