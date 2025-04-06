@@ -53,7 +53,7 @@ conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvi
 Install NeMO from main branch + dependencies
 ```bash
 apt-get update && apt-get install -y libsndfile1 ffmpeg
-pip install Cython packagin
+pip install Cython packaging
 python -m pip install 'git+https://github.com/NVIDIA/NeMo.git@main#egg=nemo_toolkit[all]'
 ```
 ## Manifest generation
@@ -62,7 +62,19 @@ All ASR models need to run with a manifest file. This is latter introduced in th
 Use the `create_manifest.py` code and the `type` parameter should be `asr`.
 
 ## Download models
-You can
+You need to install huggingface-cli:
+```bash
+pip install -U "huggingface_hub[cli]"
+```
+
+To download models:
+```bash
+huggingface-cli download [REPO_ID] --include [FILE_NAME] --local-dir [SAVE_DIR]
+```
+- `[REPO_ID]` is the model repository from huggingface. Example `nvidia/parakeet-tdt-1.1b`
+- `[FILE_NAME]` path to the file name that ends with `.nemo`. Example `parakeet-tdt-1.1b.nemo`
+- `[SAVE_DIR]` is your target directory. Inside asr/models.
+
 
 ## General Parameters
 - `model_path`: Local path to .nemo file 
