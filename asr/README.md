@@ -51,7 +51,7 @@ conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvi
 ```
 
 Install NeMO from main branch + dependencies
-```console
+```bash
 apt-get update && apt-get install -y libsndfile1 ffmpeg
 pip install Cython packagin
 python -m pip install 'git+https://github.com/NVIDIA/NeMo.git@main#egg=nemo_toolkit[all]'
