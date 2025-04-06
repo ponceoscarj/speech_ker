@@ -77,7 +77,6 @@ You can
 python speech_to_text_buffered_infer_ctc.py \
     model_path="stt_en_conformer_ctc_small.nemo" \
     pretrained_name="stt_en_conformer_ctc_small" \
-    audio_dir="/path/to/audio_files" \
     dataset_manifest="/path/to/manifest.json" \
     output_filename="/output/path/results.json" \
     total_buffer_in_secs=4.0 \
@@ -96,7 +95,6 @@ python speech_to_text_buffered_infer_ctc.py \
 python speech_to_text_buffered_infer_rnnt.py \
     model_path=null \
     pretrained_name=null \
-    audio_dir="<remove or path to folder of audio files>" \
     dataset_manifest="<remove or path to manifest>" \
     output_filename="<remove or specify output filename>" \
     total_buffer_in_secs=4.0 \
@@ -113,7 +111,6 @@ python speech_to_text_buffered_infer_rnnt.py \
 python speech_to_text_buffered_infer_rnnt.py \
     model_path=null \
     pretrained_name=null \
-    audio_dir="<remove or path to folder of audio files>" \
     dataset_manifest="<remove or path to manifest>" \
     output_filename="<remove or specify output filename>" \
     total_buffer_in_secs=4.0 \
@@ -131,7 +128,6 @@ python speech_to_text_buffered_infer_rnnt.py \
 python speech_to_text_aed_chunked_infer.py \
     model_path=null \
     pretrained_name="nvidia/canary-1b-flash" \
-    audio_dir="<(optional) path to folder of audio files>" \
     dataset_manifest="<(optional) path to manifest>" \
     output_filename="<(optional) specify output filename>" \
     chunk_len_in_secs=40.0 \
