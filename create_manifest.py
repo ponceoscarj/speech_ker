@@ -38,11 +38,12 @@ python script.py aligner \
     --url_transcript_text /path/to/transcript.txt        
 
 
-Example for asr
+Example for asr with ground truth
 python create_manifest.py asr \
     --data_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
     --work_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/work_files \
     --output_file asr_manifest \
+    --include_ground_truth \
     --source_lang en \
     --target_lang en \
     --pnc no    
@@ -57,7 +58,8 @@ python create_manifest.py diarization \
 
 def create_manifest(data_dir, work_dir, output_file_name, 
                     manifest_type, url_transcript_text=None, 
-                    source_lang="en", target_lang="en", pnc="no"):
+                    source_lang="en", target_lang="en", pnc="no",
+                    include_ground_truth=False):
     
     manifest_data = []
 
@@ -68,6 +70,8 @@ def create_manifest(data_dir, work_dir, output_file_name,
         entry = None
 
         if manifest_type == "asr":
+            # Read ground-truth text from corresponding .txt file
+            
             entry = {
                 "audio_filepath": os.path.join(data_dir, wav_file),
                 "duration": None,
@@ -75,8 +79,23 @@ def create_manifest(data_dir, work_dir, output_file_name,
                 "source_lang": source_lang,
                 "target_lang": target_lang,
                 "pnc": pnc,
-                "answer": "na"
+                "text": ground_truth_text
             }
+
+            if include_ground_truth:
+                txt_file = wav_file + ".txt"
+                txt_path = os.path.join(data_dir, txt_file)
+
+                try:
+                    with open(txt_path, "r") as f:
+                        ground_truth_text = f.read().strip()
+                    entry["text"] = ground_truth_text
+                except FileNotFoundError:
+                    print(f"Warning: Missing ground truth file {txt_path}")
+                    entry["text"] = "-"
+            else:
+                entry["text"] = "-"
+
 
         elif manifest_type == "diarization":
             if url_transcript_text is not None:
@@ -138,6 +157,8 @@ def main():
     asr_parser.add_argument('--target_lang', default='en', help='Target language code') # choices=['en','de','es','fr']
     asr_parser.add_argument('--pnc', choices=['yes', 'no'], default='no', 
                           help='Whether to use punctuation and capitalization')
+    asr_parser.add_argument('--include_ground_truth', action='store_true',  # NEW FLAG
+                          help='Include text from .txt files')
 
     # Diarization parser
     diar_parser = subparsers.add_parser('diarization', parents=[base_parser])
@@ -159,7 +180,8 @@ def main():
         'data_dir': args.data_dir,
         'work_dir': args.work_dir,
         'output_file_name': args.output_file,
-        'manifest_type': args.command
+        'manifest_type': args.command,
+        'include_ground_truth': getattr(args, 'include_ground_truth', False)  # NEW        
     }
 
     if args.command in ['diarization', 'aligner']:
