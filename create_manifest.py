@@ -40,9 +40,9 @@ python script.py aligner \
 
 Example for asr
 python create_manifest.py asr \
-    --data_dir ./audio_files \
-    --work_dir ./work_files \
-    --output_file asr_manifest3 \
+    --data_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
+    --work_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/work_files \
+    --output_file asr_manifest \
     --source_lang en \
     --target_lang en \
     --pnc no    
