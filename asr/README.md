@@ -1,6 +1,8 @@
 Benchmark of ASR models
 ==============
 
+The list of models to be evaluated are available on [Huggingface open asr leaderboard](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard)
+
 # NVIDIA NeMo Models
 
 ## Model Characteristics
