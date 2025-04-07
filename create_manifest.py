@@ -40,8 +40,8 @@ python script.py aligner \
 
 Example for asr with ground truth
 python create_manifest.py asr \
-    --data_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
-    --work_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/work_files \
+    --data_dir /Users/alzahidy.misk/Desktop/pythonprojects/speech_ker/audio_files \
+    --work_dir /Users/alzahidy.misk/Desktop/pythonprojects/speech_ker/asr/work_files \
     --output_file asr_manifest \
     --include_ground_truth \
     --source_lang en \
@@ -78,8 +78,7 @@ def create_manifest(data_dir, work_dir, output_file_name,
                 "taskname": "asr",
                 "source_lang": source_lang,
                 "target_lang": target_lang,
-                "pnc": pnc,
-                "text": ground_truth_text
+                "pnc": pnc
             }
 
             if include_ground_truth:
