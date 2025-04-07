@@ -1,11 +1,11 @@
 # Benachmark of ASR and Diarization models
 
 ## ASR models
-All files for asr inferences are in the `asr` folder with instructions on how to run the models. 
+All files for asr inference are in the `asr` folder with instructions on how to run the models. 
 
 
 ## Diarization models
-All files for diarization inferences are in the `diairization` folder with instructions on how to run the models. 
+All files for diarization inference are in the `diairization` folder with instructions on how to run the models. 
 
 
 ## Additional files
