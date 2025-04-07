@@ -82,7 +82,7 @@ def create_manifest(data_dir, work_dir, output_file_name,
             }
 
             if include_ground_truth:
-                txt_file = wav_file + ".txt"
+                txt_file = wav_file_base + ".txt"
                 txt_path = os.path.join(data_dir, txt_file)
 
                 try:
