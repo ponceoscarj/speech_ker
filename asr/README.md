@@ -3,6 +3,7 @@ Benchmark of ASR models
 
 The list of models to be evaluated are available on [Huggingface open asr leaderboard](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard)
 
+
 # NVIDIA NeMo Models
 
 ## Model Characteristics
@@ -11,32 +12,32 @@ Brief description of the models from NVIDIA NeMo.
 ### Transformer (AED) Models
 | Model Name                  | Encoder          | Decoder      | NeMo Call             | Python Script         |
 |-----------------------------|------------------|--------------|-----------------------|-----------------------|
-| `nvidia/canary-1b-flash`    | FastConformer    | Transformer  | EncDecMultiTaskModel  | `aed_chunked_infer`   |
-| `nvidia/canary-1b`          | FastConformer    | Transformer  | EncDecMultiTaskModel  | `aed_chunked_infer`   |
-| `nvidia/canary-180m-flash`  | FastConformer    | Transformer  | EncDecMultiTaskModel  | `aed_chunked_infer`   |
+| `nvidia/canary-1b-flash`    | FastConformer    | Transformer  | EncDecMultiTaskModel  | `nemo_aed_chunked_infer`   |
+| `nvidia/canary-1b`          | FastConformer    | Transformer  | EncDecMultiTaskModel  | `nemo_aed_chunked_infer`   |
+| `nvidia/canary-180m-flash`  | FastConformer    | Transformer  | EncDecMultiTaskModel  | `nemo_aed_chunked_infer`   |
 
 ### RNNT Models
 | Model Name                              | Encoder          | Decoder      | NeMo Call             | Python Script         |
 |-----------------------------------------|------------------|--------------|-----------------------|-----------------------|
-| `nvidia/parakeet-tdt-1.1b`             | FastConformer    | RNNT loss    | EncDecRNNTBPEModel    | `buffered_infer_rnnt` |
-| `nvidia/parakeet-rnnt-1.1b`            | FastConformer    | RNNT loss    | EncDecRNNTBPEModel    | `buffered_infer_rnnt` |
-| `nvidia/parakeet-rnnt-0.6b`            | FastConformer    | RNNT loss    | EncDecRNNTBPEModel    | `buffered_infer_rnnt` |
-| `nvidia/stt_en_fastconformer_transducer_large` | FastConformer | RNNT loss    | EncDecRNNTBPEModel    | `buffered_infer_rnnt` |
-| `stt_en_conformer_transducer_small`    | Conformer        | RNNT loss    | EncDecRNNTBPEModel    | `buffered_infer_rnnt` |
+| `nvidia/parakeet-tdt-1.1b`             | FastConformer    | RNNT loss    | EncDecRNNTBPEModel    | `nemo_buffered_infer_rnnt` |
+| `nvidia/parakeet-rnnt-1.1b`            | FastConformer    | RNNT loss    | EncDecRNNTBPEModel    | `nemo_buffered_infer_rnnt` |
+| `nvidia/parakeet-rnnt-0.6b`            | FastConformer    | RNNT loss    | EncDecRNNTBPEModel    | `nemo_buffered_infer_rnnt` |
+| `nvidia/stt_en_fastconformer_transducer_large` | FastConformer | RNNT loss    | EncDecRNNTBPEModel    | `nemo_buffered_infer_rnnt` |
+| `stt_en_conformer_transducer_small`    | Conformer        | RNNT loss    | EncDecRNNTBPEModel    | `nemo_buffered_infer_rnnt` |
 
 ### CTC Models
 | Model Name                              | Encoder          | Decoder      | NeMo Call             | Python Script         |
 |-----------------------------------------|------------------|--------------|-----------------------|-----------------------|
-| `nvidia/parakeet-ctc-1.1b`             | FastConformer    | CTC loss     | EncDecCTCModelBPE     | `buffered_infer_ctc`  |
-| `nvidia/parakeet-ctc-0.6b`             | FastConformer    | CTC loss     | EncDecCTCModelBPE     | `buffered_infer_ctc`  |
-| `nvidia/stt_en_conformer_ctc_large`    | Conformer        | CTC loss     | EncDecCTCModelBPE     | `buffered_infer_ctc`  |
-| `nvidia/stt_en_fastconformer_ctc_large`| FastConformer    | CTC loss     | EncDecCTCModelBPE     | `buffered_infer_ctc`  |
-| `nvidia/stt_en_conformer_ctc_small`    | Conformer        | CTC loss     | EncDecCTCModelBPE     | `buffered_infer_ctc`  |
+| `nvidia/parakeet-ctc-1.1b`             | FastConformer    | CTC loss     | EncDecCTCModelBPE     | `nemo_buffered_infer_ctc`  |
+| `nvidia/parakeet-ctc-0.6b`             | FastConformer    | CTC loss     | EncDecCTCModelBPE     | `nemo_buffered_infer_ctc`  |
+| `nvidia/stt_en_conformer_ctc_large`    | Conformer        | CTC loss     | EncDecCTCModelBPE     | `nemo_buffered_infer_ctc`  |
+| `nvidia/stt_en_fastconformer_ctc_large`| FastConformer    | CTC loss     | EncDecCTCModelBPE     | `nemo_buffered_infer_ctc`  |
+| `nvidia/stt_en_conformer_ctc_small`    | Conformer        | CTC loss     | EncDecCTCModelBPE     | `nemo_buffered_infer_ctc`  |
 
 ### Hybrid Models
 | Model Name                   | Encoder          | Decoder       | NeMo Call       | Python Script         |
 |------------------------------|------------------|---------------|-----------------|-----------------------|
-| `nvidia/parakeet-tdt_ctc-110m` | FastConformer   | Hybrid TDT-CTC | ASRModel?       | `buffered_infer_rnnt` |
+| `nvidia/parakeet-tdt_ctc-110m` | FastConformer   | Hybrid TDT-CTC | ASRModel?       | `nemo_buffered_infer_rnnt` |
 
 
 ## Instructions
@@ -148,3 +149,29 @@ python speech_to_text_aed_chunked_infer.py \
     batch_size=16 \
     decoding.beam.beam_size=1
 ```
+
+
+# CrisperWhisper
+
+## Requirements
+- Create environment wiht Python 3.10 (more stable) - you can use your nemo conda environment
+ 
+- Clone repository into your `asr` folder `CrisperWhisper`:
+```bash
+git clone https://github.com/nyrahealth/CrisperWhisper.git
+cd CrisperWhisper
+```
+
+ - Install dependencies
+ ```bash
+ pip install -r requirements.txt
+ ```
+
+ - Accept license of the model [CrisperWhisper](https://huggingface.co/nyrahealth/CrisperWhisper)
+
+- Login into huggingface
+```bash
+huggingface-cli login
+```
+
+- Run the model from `crisperwhisper.py`
