@@ -40,37 +40,39 @@ Brief description of the models from NVIDIA NeMo.
 | `nvidia/parakeet-tdt_ctc-110m` | FastConformer   | Hybrid TDT-CTC | ASRModel?       | `nemo_buffered_infer_rnnt` |
 
 
-## Instructions
-Create conda environment with python 3.10.12 - more stable
+## Requirements
+1. Create conda environment with python 3.10.12 - more stable
 ```bash
 conda create --name nemo python==3.10.12
 conda activate nemo
 ```
 
-Install latest torch - check your CUDA version [here](https://pytorch.org/get-started/locally/)
+2. Install latest torch - check your CUDA version [here](https://pytorch.org/get-started/locally/)
 
 ```bash
 pip install torch torchvision torchaudio
 ```
 
-Install NeMO from main branch + dependencies
+3. Install NeMO from main branch + dependencies
 ```bash
 apt-get update && apt-get install -y libsndfile1 ffmpeg
 pip install Cython packaging
 python -m pip install 'git+https://github.com/NVIDIA/NeMo.git@main#egg=nemo_toolkit[all]'
 ```
+
 ## Manifest generation
-All ASR models need to run with a manifest file. This is latter introduced in the `dataset_manifest` parameter.
+All NeMo ASR models need a manifest file which can be created with the `create_manifest.py` script. Instructions for manifest generation for ASR models are within the script. 
 
-Use the `create_manifest.py` code and the `type` parameter should be `asr`.
+Introduce this manifest when running the models under the `dataset_manifest` parameter.
 
-## Download models
-You need the huggingface_hub package:
+## Download NeMo models
+1. Install the huggingface_hub package:
 ```bash
 pip install -U "huggingface_hub[cli]"
 ```
 
-Download models form huggingface:
+2. Download models form huggingface: 
+Download the `.nemo` file to run the models. 
 ```bash
 huggingface-cli download [REPO_ID] --include [FILE_NAME] --local-dir [SAVE_DIR]
 ```
@@ -79,14 +81,15 @@ huggingface-cli download [REPO_ID] --include [FILE_NAME] --local-dir [SAVE_DIR]
 - `[SAVE_DIR]` is your target directory. Inside asr/models.
 
 
-## General Parameters
+## Running the models
+1. General parameters for running each model
 - `model_path`: Local path to .nemo file 
 - `pretrained_name`: Model name
 - `audio_dir`: Directory containing WAV files
 - `dataset_manifest`: Path to the manifest file
 - `output_filename`: Output results path
 
-### CTC Models - buffered_infer_ctc
+### Example for CTC Models - nemo_buffered_infer_ctc
 
 ```bash
 python speech_to_text_buffered_infer_ctc.py \
@@ -103,7 +106,7 @@ python speech_to_text_buffered_infer_ctc.py \
 ```
 
 
-### RNNT Model Example - buffered_infer_rnnt
+### Example for RNNT Models - nemo_buffered_infer_rnnt
 
 #### Middle Token Merge
 ```bash
@@ -137,7 +140,7 @@ python speech_to_text_buffered_infer_rnnt.py \
 ```
 
 
-### AED Example - aed_chunked_infer
+### Example for Canary Models - nemo_aed_chunked_infer
 
 ```bash
 python speech_to_text_aed_chunked_infer.py \
@@ -153,25 +156,25 @@ python speech_to_text_aed_chunked_infer.py \
 
 # CrisperWhisper
 
-## Requirements
-- Create environment wiht Python 3.10 (more stable) - you can use your nemo conda environment
+## Instructions
+1. Create environment wiht Python 3.10 (more stable) - you can use your nemo conda environment
  
-- Clone repository into your `asr` folder `CrisperWhisper`:
+2. Clone repository into your `asr` folder:
 ```bash
 git clone https://github.com/nyrahealth/CrisperWhisper.git
 cd CrisperWhisper
 ```
 
- - Install dependencies
+3. Install dependencies from the 
  ```bash
- pip install -r requirements.txt
+ pip install -r ./CrisperWhisper/requirements.txt
  ```
 
- - Accept license of the model [CrisperWhisper](https://huggingface.co/nyrahealth/CrisperWhisper)
+4. Accept the license of the model [CrisperWhisper](https://huggingface.co/nyrahealth/CrisperWhisper)
 
-- Login into huggingface
+5. Login into huggingface
 ```bash
 huggingface-cli login
 ```
 
-- Run the model from `crisperwhisper.py`
+6. Run the model from `crisperwhisper.py`
