@@ -165,7 +165,7 @@ git clone https://github.com/nyrahealth/CrisperWhisper.git
 cd CrisperWhisper
 ```
 
-3. Install dependencies from the 
+3. Install the dependencies of CrisperWhisper
  ```bash
  pip install -r ./CrisperWhisper/requirements.txt
  ```
