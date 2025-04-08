@@ -172,7 +172,7 @@ cd CrisperWhisper
 
 4. Accept the license of the model [CrisperWhisper](https://huggingface.co/nyrahealth/CrisperWhisper)
 
-5. Login into huggingface
+5. Login into huggingface and introduce your token. 
 ```bash
 huggingface-cli login
 ```
