@@ -145,6 +145,8 @@ def main():
                 file_path = entry['audio_file_path']
                 
                 try:
+                    print('Transcription done - personal use - delete \n')
+                    
                     result = transcribe_audio(
                         file_path=file_path,
                         model_id=args.model,
@@ -152,7 +154,7 @@ def main():
                         batch_size=args.batch_size,
                         return_timestamps=args.timestamps if args.timestamps != "none" else False
                     )
-                    
+                    print('Transcription done - personal use - delete \n')
                     predicted_text = result["text"]
                     entry["predicted_transcription"] = predicted_text
 
