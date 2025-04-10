@@ -165,9 +165,10 @@ git clone https://github.com/nyrahealth/CrisperWhisper.git
 cd CrisperWhisper
 ```
 
-3. Install the dependencies of CrisperWhisper
+3. Install the dependencies of CrisperWhisper and `crisperwhisper.py`
  ```bash
  pip install -r ./CrisperWhisper/requirements.txt
+ pip install jiwer # for WER calculation
  ```
 
 4. Accept the license of the model [CrisperWhisper](https://huggingface.co/nyrahealth/CrisperWhisper)
@@ -176,5 +177,10 @@ cd CrisperWhisper
 ```bash
 huggingface-cli login
 ```
+6. Download model files to a specific folder:
+```bash
+huggingface-cli download nyrahealth/CrisperWhisper --local-dir [SAVE_DIR]
+```
+- `[SAVE_DIR]` is your target directory. Inside asr/models. Example: ./asr/models/CrisperWhisper
 
-6. Run the model from `crisperwhisper.py`
+7. Run the model by using the python script `crisperwhisper.py`

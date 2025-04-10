@@ -1,9 +1,9 @@
-import os
+import jiwer
 
-# AUDIO_PATH = '/Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files/toy2.wav'
+reference = "decision making"
+hypothesis = "decision-making"
 
-# print('NAME\n')
-# print(os.path.basename(AUDIO_PATH))
-from nemo.collections.asr.models import EncDecMultiTaskModel
-# load model
-canary_model = EncDecMultiTaskModel.from_pretrained('nvidia/canary-1b-flash')
+print(jiwer.RemovePunctuation()(hypothesis))
+
+error = jiwer.wer(reference, hypothesis)
+print(error)
