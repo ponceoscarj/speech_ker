@@ -589,6 +589,11 @@ class EnglishTextNormalizer:
         for pattern, replacement in self.replacers.items():
             s = re.sub(pattern, replacement, s)
 
+        # 1. Apostrophes attached to previous word (e.g. "just'cause" → "just cause")
+        s = re.sub(r"(\w)'", r"\1 ", s)
+        # 2. Apostrophes at word start (e.g. "'cause" → "cause")
+        s = re.sub(r"'\b(\w+)", r"\1", s)
+
         s = re.sub(r"(\d),(\d)", r"\1\2", s)  # remove commas between digits
         s = re.sub(r"\.([^0-9]|$)", r" \1", s)  # remove periods not followed by numbers
 
