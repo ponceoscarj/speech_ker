@@ -17,7 +17,7 @@ import re
 import unicodedata
 from fractions import Fraction
 from typing import Iterator, List, Match, Optional, Union
-from english_abbreviations import english_spelling_normalizer
+from asr.normalizer.english_abbreviations import english_spelling_normalizer
 
 import regex
 
@@ -106,7 +106,7 @@ class EnglishNumberNormalizer:
     def __init__(self):
         super().__init__()
 
-        self.zeros = {"o", "oh", "zero"}
+        self.zeros = {"o","zero"} # we deleted  "oh"
         # fmt: off
         self.ones = {
             name: i
@@ -565,16 +565,24 @@ class EnglishTextNormalizer:
             r"'t\b": " not",
             r"'ve\b": " have",
             r"'m\b": " am",
+            # merge "anti" + "non"
+            r"\banti\s+(coagul\w*|inflammatory\b|oxidant\b|arrhythmic\b|hypertens\w*|diab\w*)": r"anti\1",
+            r"\bpre\s+(diab\w*|exist\w*|syncop\w*|excitation\b|renal\b|hypertens\w*|cancer\w*|clampsia\b|tibia\w*)": r"pre\1",
+            r"\bnon\s+(\w+)": r"non\1"
+            
+
         }
         self.standardize_numbers = EnglishNumberNormalizer()
         self.standardize_spellings = EnglishSpellingNormalizer(english_spelling_mapping)
 
     def __call__(self, s: str):
         s = s.lower()
-
         s = re.sub(r"[<\[][^>\]]*[>\]]", "", s)  # remove words between brackets
         s = re.sub(r"\(([^)]+?)\)", "", s)  # remove words between parenthesis
         s = re.sub(self.ignore_patterns, "", s)
+
+        s = remove_symbols_and_diacritics(s, keep=".%$¢€£")  # keep some symbols for numerics
+
         s = re.sub(r"\s+'", "'", s)  # standardize when there's a space before an apostrophe
 
         for pattern, replacement in self.replacers.items():
@@ -582,7 +590,6 @@ class EnglishTextNormalizer:
 
         s = re.sub(r"(\d),(\d)", r"\1\2", s)  # remove commas between digits
         s = re.sub(r"\.([^0-9]|$)", r" \1", s)  # remove periods not followed by numbers
-        s = remove_symbols_and_diacritics(s, keep=".%$¢€£")  # keep some symbols for numerics
 
         s = self.standardize_numbers(s)
         s = self.standardize_spellings(s)

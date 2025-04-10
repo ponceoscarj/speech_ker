@@ -21,14 +21,17 @@ input
 # check pre-diabetic, non-disabling
 # nondisabling, non disabling, non-disabling
 
+
+# Decisions
+# anti coagulation to anticoagulation
+
 error = jiwer.wer(gold_standard, predicted)
 print(error)
 
 
 from asr.normalizer.normalizer import EnglishTextNormalizer
 
-new_text = f'''well, it's doesn't happened to be a positive association. they're definitly more prone to err; such as nodiabetic, non-hypertensive, 
-lettin' it happen or letting it happen. nondiabetic is diffferent from non-diabetic and non diabetic?
-Afib, thirty-five pounds, 35 pounds, five-years time 5-->??_years time in dollars'''
+new_text = f'''pre-excitation syndrome, pre-tibial, pre-syncopal, pre-syncope'''
 
-print(EnglishTextNormalizer()(new_text))
+print('\n',new_text,'\n')
+print('\n','normalized_text:\n', EnglishTextNormalizer()(new_text), '\n')
