@@ -582,7 +582,7 @@ class EnglishTextNormalizer:
         s = re.sub(r"\(([^)]+?)\)", "", s)  # remove words between parenthesis
         s = re.sub(self.ignore_patterns, "", s)
 
-        s = remove_symbols_and_diacritics(s, keep=".%$¢€£")  # keep some symbols for numerics
+        s = remove_symbols_and_diacritics(s, keep=".%$¢€£'")  # keep some symbols for numerics
 
         s = re.sub(r"\s+'", "'", s)  # standardize when there's a space before an apostrophe
 
