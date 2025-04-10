@@ -576,6 +576,8 @@ class EnglishTextNormalizer:
 
     def __call__(self, s: str):
         s = s.lower()
+        s = s.replace("’", "'")
+        s = re.sub(r"\d{1,2}:\d{2}", "", s)   # Delete time formats such as 9:22 or 09:22   
         s = re.sub(r"[<\[][^>\]]*[>\]]", "", s)  # remove words between brackets
         s = re.sub(r"\(([^)]+?)\)", "", s)  # remove words between parenthesis
         s = re.sub(self.ignore_patterns, "", s)
