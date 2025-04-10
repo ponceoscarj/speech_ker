@@ -16,8 +16,8 @@ python crisperwhisper.py --input_dir /Users/oscarponce/Documents/PythonProjects/
                 --chunk_length 30 \
                 --batch_size 1 \
                 --timestamps none \
-                --extensions .wav \
-                --gold_standard
+                --extensions .wav
+
 
 Notes:
 --extensions .wav . mp3 #can accept multiple
