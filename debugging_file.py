@@ -30,8 +30,8 @@ print(error)
 
 
 from asr.normalizer.normalizer import EnglishTextNormalizer
-
-new_text = f'''pre-excitation syndrome, pre-tibial, pre-syncopal, pre-syncope'''
+normalizer = EnglishTextNormalizer()
+new_text = f'''tis the season'''
 
 print('\n',new_text,'\n')
 print('\n','normalized_text:\n', EnglishTextNormalizer()(new_text), '\n')
