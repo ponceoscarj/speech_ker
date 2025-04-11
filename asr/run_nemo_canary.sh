@@ -199,7 +199,7 @@ run_experiment() {
 
     {
         echo -e "\n=== Starting Transcription ===\n"
-        python nemo_aed_chunked_infer.py \
+        python /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/nemo_aed_chunked_infer.py \
             model_path="${model_path}" \
             pretrained_name="${pretrained_name}" \
             dataset_manifest="${dataset_manifest}" \
@@ -213,7 +213,7 @@ run_experiment() {
             }
 
         echo -e "\n=== Calculating WER ===\n"
-        python new_wer_calculator.py \
+        python /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/new_wer_calculator.py \
             -i "${output_file}" \
             -v || {
                 echo "ERROR: WER calculation failed for ${output_file}"
