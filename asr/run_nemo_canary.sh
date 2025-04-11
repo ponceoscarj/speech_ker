@@ -6,7 +6,7 @@
 # This script automates running speech recognition experiments with various 
 # configurations and calculates Word Error Rate (WER).
 # ==============================================================================
-
+set -x
 set -eo pipefail  # Exit on error and pipe failures
 
 # Example Usage:
@@ -199,7 +199,7 @@ run_experiment() {
 
     {
         echo -e "\n=== Starting Transcription ===\n"
-        python /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/nemo_aed_chunked_infer.py \
+        python3 /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/nemo_aed_chunked_infer.py \
             model_path="${model_path}" \
             pretrained_name="${pretrained_name}" \
             dataset_manifest="${dataset_manifest}" \
@@ -213,7 +213,7 @@ run_experiment() {
             }
 
         echo -e "\n=== Calculating WER ===\n"
-        python /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/new_wer_calculator.py \
+        python3 /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/new_wer_calculator.py \
             -i "${output_file}" \
             -v || {
                 echo "ERROR: WER calculation failed for ${output_file}"
@@ -229,8 +229,10 @@ run_experiment() {
 # Main Program
 # ==============================================================================
 main() {
+    echo "=== Starting main() ==="    
     parse_parameters "$@"
-    
+    echo "=== Parameters parsed ==="
+        
     local experiment_dir=$(create_experiment_dir)
     local total_configs=$((${#batch_sizes[@]} * ${#chunk_lengths[@]}))
     
