@@ -13,10 +13,9 @@ set -eo pipefail  # Exit on error and pipe failures
 # bash ./run_nemo_canary.sh -d /data/manifest.json -m /models/my_model.nemo \
 #     -o /output -c "10 20 30" -b "8 16" -k 2 -s 5
 # 
-# bash ./run_nemo_canary.sh --model-path /path/my_model.nemo \
-#     --dataset-manifest /path/manifest.json --output-dir /output \
-#     --chunk-lengths "10 20 30" --batch-sizes "8 16" --beam-size 1
-
+# bash run_nemo_canary.sh --model-path /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/models/canary-180m-flash.nemo \
+#     --dataset-manifest /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/work_files/valid_asr_manifest.json --output-dir /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/output \
+#     --chunk-lengths "20 40 60 80" --batch-sizes "2 3 4 8" --beam-size 1
 
 # ==============================================================================
 # Global Configuration and Defaults
@@ -207,6 +206,7 @@ run_experiment() {
             output_filename="${output_file}" \
             chunk_len_in_secs="${chunk_len}.0" \
             batch_size="${batch_size}" \
+            clean_groundtruth_text=true \
             decoding.beam.beam_size="${beam_size}" || {
                 echo "ERROR: Transcription failed for chunk ${chunk_len}, batch ${batch_size}"
                 exit 1
