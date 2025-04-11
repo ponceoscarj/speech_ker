@@ -53,11 +53,20 @@ conda activate nemo
 pip install torch torchvision torchaudio
 ```
 
-3. Install NeMO from main branch + dependencies
+3. Install NeMo important dependencies
 ```bash
 apt-get update && apt-get install -y libsndfile1 ffmpeg
 pip install Cython packaging
+```
+
+4. Install NeMo
+```bash
 python -m pip install 'git+https://github.com/NVIDIA/NeMo.git@main#egg=nemo_toolkit[all]'
+```
+OR
+```bash
+pip install "nemo_toolkit[all]"===999 #version 999 does not exist but it will trigger nemo_toolkit to show you all the version, choose the latest.
+pip install "nemo_toolkit[all]"===2.3.0rc2 #this is the latest version as of April 11th, 2025
 ```
 
 ## Manifest generation

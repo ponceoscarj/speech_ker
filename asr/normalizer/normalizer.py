@@ -577,13 +577,16 @@ class EnglishTextNormalizer:
     def __call__(self, s: str):
         s = s.lower()
         s = s.replace("’", "'")
+        # print(s, 'first')
         s = re.sub(r"\d{1,2}:\d{2}", "", s)   # Delete time formats such as 9:22 or 09:22   
         s = re.sub(r"[<\[][^>\]]*[>\]]", "", s)  # remove words between brackets
         s = re.sub(r"\(([^)]+?)\)", "", s)  # remove words between parenthesis
         s = re.sub(self.ignore_patterns, "", s)
+        # print(s, 'second')
+        s = re.sub(r"(\d),(\d)", r"\1\2", s)  # remove commas between digits
 
         s = remove_symbols_and_diacritics(s, keep=".%$¢€£'")  # keep some symbols for numerics
-
+        # print(s, 'second')
         s = re.sub(r"\s+'", "'", s)  # standardize when there's a space before an apostrophe
 
         for pattern, replacement in self.replacers.items():
@@ -594,7 +597,6 @@ class EnglishTextNormalizer:
         # 2. Apostrophes at word start (e.g. "'cause" → "cause")
         s = re.sub(r"'\b(\w+)", r"\1", s)
 
-        s = re.sub(r"(\d),(\d)", r"\1\2", s)  # remove commas between digits
         s = re.sub(r"\.([^0-9]|$)", r" \1", s)  # remove periods not followed by numbers
 
         s = self.standardize_numbers(s)

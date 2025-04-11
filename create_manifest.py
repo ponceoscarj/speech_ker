@@ -15,6 +15,7 @@ python script.py asr \
     --output_file asr_manifest \
     --source_lang en \
     --target_lang en \
+    --include_ground_truth true \
     --pnc yes
 
 For diarization:
@@ -45,6 +46,7 @@ python create_manifest.py asr \
     --output_file asr_manifest \
     --source_lang en \
     --target_lang en \
+    --include_ground_truth \
     --pnc no    
 
 python create_manifest.py diarization \
