@@ -76,10 +76,10 @@ validate_positive_integer() {
     local value="$1"
     local name="$2"
     
-    [[ ! "${value}" =~ ^[1-9][0-9]*$ ]] && { 
+    if ! [[ "${value}" =~ ^[1-9][0-9]*$ ]]; then 
         echo "ERROR: ${name} must be a positive integer, got '${value}'"
         exit 1
-    }
+    fi
 }
 
 
