@@ -139,8 +139,16 @@ parse_parameters() {
     # Validate mandatory parameters
     [[ -z "${model_path}" ]] && { echo "ERROR: Missing --model-path"; exit 1; }
     [[ -z "${dataset_manifest}" ]] && { echo "ERROR: Missing --dataset-manifest"; exit 1; }
-    [[ ${#chunk_lengths[@]} -eq 0 ]] && { echo "ERROR: No chunk lengths specified"; exit 1; }
-    [[ ${#batch_sizes[@]} -eq 0 ]] && { echo "ERROR: No batch sizes specified"; exit 1; }
+
+if [[ ${#chunk_lengths[@]} -eq 0 ]]; then
+    echo "ERROR: No chunk lengths specified"
+    exit 1
+fi
+
+if [[ ${#batch_sizes[@]} -eq 0 ]]; then
+    echo "ERROR: No batch sizes specified"
+    exit 1
+fi
 }    
 
 
