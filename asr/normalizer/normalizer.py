@@ -17,7 +17,7 @@ import re
 import unicodedata
 from fractions import Fraction
 from typing import Iterator, List, Match, Optional, Union
-from asr.normalizer.english_abbreviations import english_spelling_normalizer
+from normalizer.english_abbreviations import english_spelling_normalizer
 import regex
 
 
