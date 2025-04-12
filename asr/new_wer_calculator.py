@@ -74,7 +74,7 @@ def main():
                 count += 1
                 
                 if args.verbose:
-                    print(f"Processed entry {line_num}. WER={wer:.2f}%\n")
+                    print(f"Processed entry {line_num}. Normalized WER={wer:.2f}%\n")
                     # print(f"Original hyp: {hyp}")
                     # print(f"Normalized hyp: {hyp_normalized}")
                     # print(f"WER: {wer:.2f}%\n")
@@ -90,7 +90,7 @@ def main():
     if count > 0:
         print(f"\nResults:")
         print(f"Processed entries: {count}")
-        print(f"Average WER: {total_wer / count:.2f}%")
+        print(f"Average Normalized WER: {total_wer / count:.2f}%")
         print(f"Updated file: {args.input_file}")
         print(f"New keys added: 'wer_normalized', 'norm_pred_text'")        
     else:
