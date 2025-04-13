@@ -15,7 +15,7 @@ import numpy as np
 from collections import deque
 from transformers import AutoModelForCausalLM, AutoProcessor
 from pyannote.audio import Model
-from pyannote.audio.pipelines import VoiceActivityDetection
+from pyannote.audio.pipelines import VoiceActivityDetection, Pipeline
 from pyannote.core import Segment
 import math
 
@@ -62,10 +62,10 @@ def load_models() -> tuple:
     )
     
     # Load a single instance of the Pyannote VAD pipeline with hardware awareness.
-    vad_pipeline = Pipeline.from_pretrained(
+    segmentation_model = Model.from_pretrained(
         "pyannote/segmentation-3.0",
         use_auth_token=PYANNOTE_TOKEN
-    )
+    ).to(device)
     
     vad_pipeline = VoiceActivityDetection(segmentation=segmentation_model)
     vad_pipeline.to(device)
