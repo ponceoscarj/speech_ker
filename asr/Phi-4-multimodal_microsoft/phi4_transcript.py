@@ -15,7 +15,8 @@ import numpy as np
 from collections import deque
 from transformers import AutoModelForCausalLM, AutoProcessor
 from pyannote.audio import Model
-from pyannote.audio.pipelines import VoiceActivityDetection, Pipeline
+from pyannote.audio.pipelines import VoiceActivityDetection
+from pyannote.pipeline import Pipeline
 from pyannote.core import Segment
 import math
 
