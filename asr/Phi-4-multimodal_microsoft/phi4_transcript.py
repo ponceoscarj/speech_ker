@@ -21,11 +21,11 @@ from pyannote.core import Segment
 import math
 
 # Configuration
-MODEL_PATH = 'Your Phi-4-multimodal location'
+MODEL_PATH = '/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/'
 CHUNK_DURATION = 30          # Target chunk size in seconds
 CONTEXT_WORDS = 30           # Number of context words to maintain
 OVERLAP_SECONDS = 1.5        # Audio overlap in seconds
-PYANNOTE_TOKEN = "your_huggingface_token"
+PYANNOTE_TOKEN = "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"
 
 PROMPT_TEMPLATE = """<|user|><|audio_1|>
 Generate detailed transcription continuing from:
@@ -217,5 +217,5 @@ if __name__ == "__main__":
         torch.backends.cudnn.allow_tf32 = True        
         
 
-    transcription = process_audio("input.wav")
+    transcription = process_audio("/home/ext_ponceponte_oscar_mayo_edu/speech_ker/audio_files/afap024.wav")
     print("Final Transcription:\n", transcription)
