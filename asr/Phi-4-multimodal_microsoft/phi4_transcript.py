@@ -63,9 +63,10 @@ def load_models() -> tuple:
     # Load a single instance of the Pyannote VAD pipeline with hardware awareness.
     vad_pipeline = Pipeline.from_pretrained(
         "pyannote/voice-activity-detection",
-        use_auth_token=PYANNOTE_TOKEN,
-        device=device
+        use_auth_token=PYANNOTE_TOKEN
     )
+
+    vad_pipeline.to(device)
     
     return processor, model, vad_pipeline, device
 
