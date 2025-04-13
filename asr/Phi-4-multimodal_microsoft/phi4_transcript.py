@@ -14,7 +14,8 @@ import soundfile as sf
 import numpy as np
 from collections import deque
 from transformers import AutoModelForCausalLM, AutoProcessor
-from pyannote.audio import Pipeline
+from pyannote.audio import Model
+from pyannote.audio.pipelines import VoiceActivityDetection
 from pyannote.core import Segment
 import math
 
@@ -62,11 +63,20 @@ def load_models() -> tuple:
     
     # Load a single instance of the Pyannote VAD pipeline with hardware awareness.
     vad_pipeline = Pipeline.from_pretrained(
-        "pyannote/voice-activity-detection",
+        "pyannote/segmentation-3.0",
         use_auth_token=PYANNOTE_TOKEN
     )
-
+    
+    vad_pipeline = VoiceActivityDetection(segmentation=segmentation_model)
     vad_pipeline.to(device)
+
+    HYPER_PARAMETERS = {
+        "onset": 0.5, 
+        "offset": 0.5,
+        "min_duration_on": 0.1,
+        "min_duration_off": 0.1,
+    }
+    vad_pipeline.instantiate(HYPER_PARAMETERS)    
     
     return processor, model, vad_pipeline, device
 
@@ -81,7 +91,7 @@ def pyannote_chunking(vad_pipeline: Pipeline, audio_path: str, chunk_duration: f
     
     # Merge consecutive speech segments
     for segment, _, label in vad_results.itertracks(yield_label=True):
-        if label == "SPEECH":
+        if label == "speech":
             if current_segment is None:
                 current_segment = segment
             else:
