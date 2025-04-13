@@ -72,7 +72,6 @@ def load_models() -> tuple:
     vad_pipeline.to(device)
 
     HYPER_PARAMETERS = {
-        "threshold": 0.5,  # New parameter name instead of onset/offset
         "min_duration_on": 0.1,
         "min_duration_off": 0.1,
     }
