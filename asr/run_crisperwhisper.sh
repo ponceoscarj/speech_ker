@@ -17,9 +17,9 @@ set -eo pipefail  # Exit on error and pipe failures
 #   --model /models/CrisperWhisper \
 #   --input-dir /audio_files \
 #   --output-dir /output \
-#   --chunk-lengths "20 30"
-#   --batch-sizes "2 4"
-#   --timestamps "none"
+#   --chunk-lengths "20 30" \
+#   --batch-sizes "2 4" \
+#   --timestamp "none" \
 #   --extension ".wav"
 
 
@@ -72,8 +72,22 @@ validate_directory() {
     local dir_path="$1"
     local name="$2"
     
-    [[ -z "${dir_path}" ]] && { echo "ERROR: Empty ${name} path provided"; exit 1; }
-    [[ ! -d "${dir_path}" ]] && { echo "ERROR: Directory not found: ${dir_path}"; exit 1; }
+    [[ -z "${dir_path}" ]] && { 
+        echo "ERROR: Empty ${name} path provided"
+        exit 1
+    }
+    
+    # Detailed diagnostics
+    echo "=== Directory Validation ==="
+    echo "Checking: ${dir_path}"
+    ls -ld "${dir_path}" 2>&1 | sed 's/^/DEBUG: /'
+    [[ ! -d "${dir_path}" ]] && { 
+        echo "ERROR: Directory not found: ${dir_path}"
+        echo "Parent directory contents:"
+        ls -la "${dir_path%/*}"
+        exit 1
+    }
+    echo "Validation passed"
 }
 
 validate_positive_integer() {
