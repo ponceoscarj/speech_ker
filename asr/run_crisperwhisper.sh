@@ -11,7 +11,17 @@ set -eo pipefail  # Exit on error and pipe failures
 
 # Example Usage:
 # bash run_crisperwhisper.sh -m /models/CrisperWhisper -i /audio_files \
-#     -o /output -c "20 30" -b "2 4" -t "word segment none" -e ".wav"
+#     -o /output -c "20 30" -b "2 4" -t "none" -e ".wav"
+#
+# bash run_crisperwhisper.sh \
+#   --model /models/CrisperWhisper \
+#   --input-dir /audio_files \
+#   --output-dir /output \
+#   --chunk-lengths "20 30"
+#   --batch-sizes "2 4"
+#   --timestamps "none"
+#   --extension ".wav"
+
 
 # ==============================================================================
 # Global Configuration and Defaults
@@ -19,7 +29,7 @@ set -eo pipefail  # Exit on error and pipe failures
 readonly DEFAULT_OUTPUT="./results"
 readonly DEFAULT_CHUNKS=(20 30)
 readonly DEFAULT_BATCHES=(4 2)
-readonly DEFAULT_TIMESTAMPS=("word" "segment" "none")
+readonly DEFAULT_TIMESTAMP="none"
 readonly DEFAULT_EXTENSION=".wav"
 readonly DEFAULT_SLEEP=2
 
@@ -31,7 +41,7 @@ input_dir=""
 output_base_dir="$DEFAULT_OUTPUT"
 chunk_lengths=("${DEFAULT_CHUNKS[@]}")
 batch_sizes=("${DEFAULT_BATCHES[@]}")
-timestamps=("${DEFAULT_TIMESTAMPS[@]}")
+timestamp="$DEFAULT_TIMESTAMP"
 extensions="$DEFAULT_EXTENSION"
 sleep_time="$DEFAULT_SLEEP"
 
@@ -50,7 +60,7 @@ Optional Parameters:
   -o, --output-dir OUTPUT_DIR       Base output directory (default: ./results)
   -c, --chunk-lengths LENGTHS       Space-separated chunk lengths (default: "20 30")
   -b, --batch-sizes SIZES           Space-separated batch sizes (default: "4 2")
-  -t, --timestamps TYPES            Space-separated timestamp types (default: "word segment none")
+  -t, --timestamp TYPE              Timestamp type ("word", "segment", or "none") (default: none)
   -e, --extensions EXT              File extension to process (default: ".wav")
   -s, --sleep-time SECONDS          Sleep between runs (default: 2)
   -h, --help                        Show this help message
@@ -76,13 +86,21 @@ validate_positive_integer() {
     fi
 }
 
+validate_timestamp() {
+    local ts="$1"
+    case "$ts" in
+        "word"|"segment"|"none") ;;
+        *) echo "ERROR: Invalid timestamp value '$ts'. Must be 'word', 'segment', or 'none'"; exit 1 ;;
+    esac
+}
+
 # ==============================================================================
 # Parameter Parsing
 # ==============================================================================
 parse_parameters() {
     local parsed_args
     parsed_args=$(getopt -o m:i:o:c:b:t:e:s:h \
-                --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamps:,extensions:,sleep-time:,help \
+                --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
                 -n "$0" -- "$@") || { show_help; exit 1; }
 
     eval set -- "${parsed_args}"
@@ -107,9 +125,9 @@ parse_parameters() {
                 IFS=' ' read -r -a batch_sizes <<< "$(echo "$2" | xargs)"
                 [[ ${#batch_sizes[@]} -eq 0 ]] && batch_sizes=("${DEFAULT_BATCHES[@]}")
                 shift 2 ;;
-            -t|--timestamps)
-                IFS=' ' read -r -a timestamps <<< "$(echo "$2" | xargs)"
-                [[ ${#timestamps[@]} -eq 0 ]] && timestamps=("${DEFAULT_TIMESTAMPS[@]}")
+            -t|--timestamp)
+                timestamp="$2"
+                validate_timestamp "${timestamp}"
                 shift 2 ;;
             -e|--extensions)
                 extensions="$2"
@@ -127,14 +145,6 @@ parse_parameters() {
     # Validate mandatory parameters
     [[ -z "${model}" ]] && { echo "ERROR: Missing --model"; exit 1; }
     [[ -z "${input_dir}" ]] && { echo "ERROR: Missing --input-dir"; exit 1; }
-
-    # Validate timestamp values
-    for ts in "${timestamps[@]}"; do
-        case "$ts" in
-            "word"|"segment"|"none") ;;
-            *) echo "ERROR: Invalid timestamp value '$ts'"; exit 1 ;;
-        esac
-    done
 }
 
 # ==============================================================================
@@ -160,7 +170,7 @@ Model:         ${model}
 Input Dir:     ${input_dir}
 Chunk Lengths: "${chunk_lengths[*]}"
 Batch Sizes:   "${batch_sizes[*]}"
-Timestamps:    "${timestamps[*]}"
+Timestamp:     "${timestamp}"
 Extensions:    "${extensions}"
 Sleep Time:    ${sleep_time}
 =============================
@@ -173,18 +183,17 @@ EOF
 run_experiment() {
     local batch_size="$1"
     local chunk_len="$2"
-    local timestamp="$3"
-    local experiment_dir="$4"
+    local experiment_dir="$3"
     
     local model_dir_name=$(basename "${experiment_dir}")
     local timestamp_str=$(date +'%Y%m%d_%H%M%S')
-    local output_subdir="${experiment_dir}/chunk${chunk_len}_batch${batch_size}_ts_${timestamp}_${timestamp_str}"
-    local log_file="${experiment_dir}/${model_dir_name}_chunk${chunk_len}_batch${batch_size}_ts_${timestamp}.log"
+    local output_subdir="${experiment_dir}/chunk${chunk_len}_batch${batch_size}_${timestamp_str}"
+    local log_file="${experiment_dir}/${model_dir_name}_chunk${chunk_len}_batch${batch_size}.log"
 
     echo "Running configuration:"
     echo "  - Chunk length: ${chunk_len}s"
     echo "  - Batch size: ${batch_size}"
-    echo "  - Timestamps: ${timestamp}"
+    echo "  - Timestamp: ${timestamp}"
     
     mkdir -p "${output_subdir}"
     initialize_log_file "${log_file}"
@@ -199,7 +208,7 @@ run_experiment() {
             --batch_size "${batch_size}" \
             --timestamps "${timestamp}" \
             --extensions "${extensions}" || {
-                echo "ERROR: Transcription failed for chunk ${chunk_len}, batch ${batch_size}, ts ${timestamp}"
+                echo "ERROR: Transcription failed for chunk ${chunk_len}, batch ${batch_size}"
                 exit 1
             }
 
@@ -223,12 +232,13 @@ main() {
     parse_parameters "$@"
     
     local experiment_dir=$(create_experiment_dir)
-    local total_configs=$((${#batch_sizes[@]} * ${#chunk_lengths[@]} * ${#timestamps[@]}))
+    local total_configs=$((${#batch_sizes[@]} * ${#chunk_lengths[@]}))
     
     echo -e "\n=== Starting Experiment Series ==="
     echo "Model:          ${model}"
     echo "Input Directory: ${input_dir}"
     echo "Output Directory: ${experiment_dir}"
+    echo "Timestamp Type: ${timestamp}"
     echo "Total Configurations: ${total_configs}"
     echo "----------------------------------------"
 
@@ -237,11 +247,9 @@ main() {
         validate_positive_integer "${batch_size}" "Batch size"
         for chunk_len in "${chunk_lengths[@]}"; do
             validate_positive_integer "${chunk_len}" "Chunk length"
-            for timestamp in "${timestamps[@]}"; do
-                echo -e "\n=== Processing Configuration ${count}/${total_configs} ==="
-                run_experiment "${batch_size}" "${chunk_len}" "${timestamp}" "${experiment_dir}"
-                ((count++))
-            done
+            echo -e "\n=== Processing Configuration ${count}/${total_configs} ==="
+            run_experiment "${batch_size}" "${chunk_len}" "${experiment_dir}"
+            ((count++))
         done
     done
 

@@ -166,9 +166,9 @@ python speech_to_text_aed_chunked_infer.py \
 # CrisperWhisper
 
 ## Instructions
-1. Create environment wiht Python 3.10 (more stable) - you can use your nemo conda environment
+1. Create environment with Python 3.10 (more stable) - use your nemo conda environment if you have it
  
-2. Clone repository into your `asr` folder:
+2. Clone repository into your `asr/models` folder:
 ```bash
 git clone https://github.com/nyrahealth/CrisperWhisper.git
 cd CrisperWhisper
