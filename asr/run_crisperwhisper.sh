@@ -7,7 +7,7 @@
 # configurations and calculates Word Error Rate (WER).
 # ==============================================================================
 set -x
-set -eo pipefail  # Exit on error and pipe failures
+# set -eo pipefail  # Exit on error and pipe failures
 
 # Example Usage:
 # bash run_crisperwhisper.sh -m /models/CrisperWhisper -i /audio_files \
@@ -113,10 +113,14 @@ validate_timestamp() {
 # ==============================================================================
 parse_parameters() {
     local parsed_args
-    parsed_args=$(getopt -o m:i:o:c:b:t:e:s:h \
-                --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
-                -n "$0" -- "$@") || { show_help; exit 1; }
-
+    # parsed_args=$(getopt -o m:i:o:c:b:t:e:s:h \
+    #             --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
+    #             -n "$0" -- "$@") || { show_help; exit 1; }
+    parsed_args=$(/usr/local/opt/gnu-getopt/bin/getopt \
+    -o m:i:o:c:b:t:e:s:h \
+    --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
+    -n "$0" -- "$@") || { show_help; exit 1; }
+    
     eval set -- "${parsed_args}"
 
     while true; do
@@ -125,7 +129,7 @@ parse_parameters() {
                 model="$2"
                 shift 2 ;;
             -i|--input-dir)
-                input_dir="$2"
+                input_dir="$(realpath "$2")"  # Use realpath for absolute paths
                 validate_directory "${input_dir}" "Input"
                 shift 2 ;;
             -o|--output-dir)
