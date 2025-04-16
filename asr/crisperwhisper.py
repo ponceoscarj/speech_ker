@@ -88,6 +88,7 @@ def main():
             model=model,
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
+            model_kwargs={"use_input_features":True},
             chunk_length_s=args.chunk_length,
             batch_size=args.batch_size,
             return_timestamps=args.timestamps if args.timestamps != "none" else False,

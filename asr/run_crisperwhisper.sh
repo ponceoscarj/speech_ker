@@ -209,13 +209,18 @@ run_experiment() {
     local model_dir_name=$(basename "${experiment_dir}")
     local output_filename="${model_dir_name}_b${batch_size}_c${chunk_len}"
 
+    local log_file="${experiment_dir}/${output_filename}.log"
+
     echo "Running configuration:"
     echo "  - Chunk length: ${chunk_len}s"
     echo "  - Batch size: ${batch_size}"
     echo "  - Timestamp: ${timestamp}"
     echo "  - Output filename: ${output_filename}"
-
-    mkdir -p "${model_dir_name}"
+    # === FIX 2: Create directory for log ===
+    mkdir -p "${experiment_dir}" || {
+        echo "ERROR: Failed to create experiment directory"
+        exit 1
+    }
     initialize_log_file "${log_file}"
 
     {
