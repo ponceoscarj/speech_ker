@@ -24,8 +24,10 @@ import sys
 import torch
 from datetime import datetime
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+from datasets import load_dataset, Audio
 import jiwer
 import warnings
+from tqdm import tqdm
 
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -69,28 +71,25 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
 
     # REMOVED: Log directory creation and log file setup
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    torch_dtype = torch.float16 if "cuda" in device else torch.float32
 
-    try:
-        # CHANGED: Simplified startup messages
-        print(f"\n=== Transcription form crisperwhisper.py Started ===")
-        print(f"Timestamp: {datetime.now().isoformat()}")
-        print(f"Command: {' '.join(sys.argv)}")
-        
-        device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-        print(f"Using device: {'GPU' if 'cuda' in device else 'CPU'}")
-        print(f"Output directory: {args.output_dir}\n")
 
+    with tqdm(total=3, desc="Loading Model") as bar:
+        # Flash Attention 2 for 3-5x speedup
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            args.model, 
-            torch_dtype=torch_dtype, 
-            low_cpu_mem_usage=True, 
-            use_safetensors=True,
-            attn_implementation="sdpa" if torch.cuda.is_available() else None            
+            args.model,
+            torch_dtype=torch_dtype,
+            use_flash_attention_2=True,
+            device_map="auto",
+            attn_implementation="flash_attention_2",
+            low_cpu_mem_usage=True
         )
-        model.to(device)
+        bar.update(1)
 
         processor = AutoProcessor.from_pretrained(args.model)
+        bar.update(1)
+
         processor.feature_extractor.return_attention_mask = True
 
         pipe = pipeline(
@@ -103,84 +102,76 @@ def main():
             return_timestamps=args.timestamps if args.timestamps != "none" else False,
             torch_dtype=torch_dtype,
             device=device)
+        
+    with tqdm(total=3, desc="Loading Data") as bar:
+        # Parallel audio loading with memory mapping
+        dataset = load_dataset("audiofolder", data_dir=args.input_dir)["train"]
+        bar.update(1)
+        
+        # Resample to 16kHz in parallel
+        dataset = dataset.cast_column("audio", Audio(sampling_rate=16000))
+        bar.update(1)
+        
+        # Prepare file paths
+        audio_paths = [os.path.join(args.input_dir, x['audio']['path'].split('/')[-1]) for x in dataset]
+        bar.update(1)        
+    
+    total_files = len(dataset)
+    main_bar = tqdm(total=total_files, desc="Transcribing", unit="file")
+    wer_bar = tqdm(total=total_files, desc="WER_calculation", leave=False)
 
-        audio_files = [
-            f for f in os.listdir(args.input_dir)
-            if os.path.splitext(f)[1].lower() in args.extensions
-        ]
+    results = []
+    total_wer = 0
+    valid_wer_count = 0
 
-        if not audio_files:
-            print(f"Error: No audio files found with extensions {args.extensions} in {args.input_dir}")
-            sys.exit(1)
+    try:
+        for i in range(0, len(dataset), args.batch_size):
+            batch = dataset[i:i+args.batch_size]
+            batch_paths = audio_paths[i:i+args.batch_size]
+            
+            # Show current file being processed
+            main_bar.set_postfix(file=os.path.basename(batch_paths[0]))
+            
+            # Batch inference
+            outputs = pipe([x["array"] for x in batch["audio"]])
+            
+            # Process results
+            for path, result in zip(batch_paths, outputs):
+                entry = {
+                    "audio_file_path": path,
+                    "predicted_transcription": result.get("text", "")
+                }
+                
+                # WER calculation
+                if args.gold_standard:
+                    gold_text = read_gold_transcription(path)
+                    entry["gold_transcription"] = gold_text or "N/A"
+                    print(gold_text)
+                    
+                    if gold_text:
+                        wer = calculate_wer(gold_text, entry["predicted_transcription"])
+                        entry["wer"] = wer
+                        total_wer += wer
+                        valid_wer_count += 1
+                        wer_bar.update(1)
+                        wer_bar.set_postfix(current_wer=f"{wer:.2f}")
+                print(f'Processed {args.batch_size}. WER = {wer}')
+                results.append(entry)
+                main_bar.update(1)
 
-        results = []
-        total_wer = 0
-        valid_wer_count = 0
+    finally:
+        main_bar.close()
+        wer_bar.close()
 
-        batch_size = args.batch_size
-        audio_batches = [audio_files[i:i + batch_size] for i in range(0, len(audio_files), batch_size)]
+    # ====================== Save Results ======================
+    output_file = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}.json")
+    with open(output_file, "w") as f:
+        json.dump(results, f, indent=2)
 
-        for batch in audio_batches:
-            batch_file_paths = [os.path.join(args.input_dir, f) for f in batch]
-            try:
-                batch_results = pipe(batch_file_paths)
-            except Exception as e:
-                print(f"Error processing batch: {str(e)}")
-                for audio_file in batch:
-                    entry = {
-                        "audio_file_path": os.path.join(args.input_dir, audio_file),
-                        "error": str(e)
-                    }
-                    results.append(entry)
-                continue
+    if args.gold_standard and valid_wer_count > 0:
+        print(f"\nAverage WER: {total_wer/valid_wer_count:.2f}")
+    print(f"\nProcessing complete. Results saved to {output_file}")
 
-            for audio_file, result in zip(batch, batch_results):
-                entry = {"audio_file_path": os.path.join(args.input_dir, audio_file)}
-                try:
-                    predicted_text = result.get("text", "")
-                    entry["predicted_transcription"] = predicted_text
-
-                    if args.gold_standard:
-                        gold_text = read_gold_transcription(entry["audio_file_path"])
-                        entry["gold_transcription"] = gold_text if gold_text else "N/A"
-                        if gold_text:
-                            wer = calculate_wer(gold_text, predicted_text)
-                            entry["wer"] = wer
-                            total_wer += wer
-                            valid_wer_count += 1
-                            print(f"Processed {audio_file} - WER: {wer:.2f}")
-                        else:
-                            entry["wer"] = "N/A"
-                            print(f"Processed {audio_file} - No gold standard")
-                    else:
-                        print(f"Processed {audio_file}")
-
-                    results.append(entry)
-
-                except Exception as e:
-                    print(f"Error processing {audio_file}: {str(e)}")
-                    entry["error"] = str(e)
-                    results.append(entry)
-
-        filename_components = [args.output_filename, f"{args.batch_size}", f"{args.chunk_length}"]
-
-        json_name = "_".join(filename_components) + ".json"
-        output_json = os.path.join(args.output_dir, json_name)        
-        with open(output_json, "w") as f:
-            json.dump(results, f, indent=4)
-
-        if args.gold_standard and valid_wer_count > 0:
-            avg_wer = total_wer / valid_wer_count
-            print(f"\n=== Summary ===")
-            print(f"Average Word Error Rate: {avg_wer:.4f}")
-            print(f"Processed files: {valid_wer_count}")
-        else:
-            print("\n=== Completed ===")
-            print(f"Processed files: {len(audio_files)}")
-
-    except Exception as e:
-        print(f"\nFatal error: {str(e)}")
-        sys.exit(1)
 
 if __name__ == "__main__":
     main()
