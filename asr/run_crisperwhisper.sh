@@ -14,13 +14,14 @@ set -x
 #     -o /output -c "20 30" -b "2 4" -t "none" -e ".wav"
 #
 # bash run_crisperwhisper.sh \
-#   --model /models/CrisperWhisper \
-#   --input-dir /audio_files \
-#   --output-dir /output \
+#   --model /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/models/crisperwhisper_model \
+#   --input-dir /home/ext_alzahidy_misk_mayo_edu/speech_ker/audio_files/audio_valid \
+#   --output-dir /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/output \
 #   --chunk-lengths "20 30" \
 #   --batch-sizes "2 4" \
 #   --timestamp "none" \
-#   --extension ".wav"
+#   --extensions ".wav" \
+#   --sleep-time 10
 
 
 # ==============================================================================
@@ -113,13 +114,13 @@ validate_timestamp() {
 # ==============================================================================
 parse_parameters() {
     local parsed_args
-    parsed_args=$(getopt -o m:i:o:c:b:t:e:s:h \
-                --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
-                -n "$0" -- "$@") || { show_help; exit 1; }
-    # parsed_args=$(/usr/local/opt/gnu-getopt/bin/getopt \
-    # -o m:i:o:c:b:t:e:s:h \
-    # --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
-    # -n "$0" -- "$@") || { show_help; exit 1; }
+    # parsed_args=$(getopt -o m:i:o:c:b:t:e:s:h \
+    #             --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
+    #             -n "$0" -- "$@") || { show_help; exit 1; }
+    parsed_args=$(/usr/local/opt/gnu-getopt/bin/getopt \
+    -o m:i:o:c:b:t:e:s:h \
+    --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
+    -n "$0" -- "$@") || { show_help; exit 1; }
     
     eval set -- "${parsed_args}"
 
@@ -169,7 +170,9 @@ parse_parameters() {
 # Experiment Setup
 # ==============================================================================
 create_experiment_dir() {
-    local model_dir_name="${model//\//_}"
+
+    model="${model%/}"  # Remove trailing slash (if present)
+    local model_dir_name=$(basename "${model}")  # Extract only the directory name    
     local experiment_dir="${output_base_dir}/${model_dir_name}"
     
     mkdir -p "${experiment_dir}" || {
@@ -204,23 +207,20 @@ run_experiment() {
     local experiment_dir="$3"
     
     local model_dir_name=$(basename "${experiment_dir}")
-    local timestamp_str=$(date +'%Y%m%d_%H%M%S')
-    local output_subdir="${experiment_dir}/chunk${chunk_len}_batch${batch_size}_${timestamp_str}"
-    local log_file="${experiment_dir}/${model_dir_name}_chunk${chunk_len}_batch${batch_size}.log"
 
     echo "Running configuration:"
     echo "  - Chunk length: ${chunk_len}s"
     echo "  - Batch size: ${batch_size}"
     echo "  - Timestamp: ${timestamp}"
     
-    mkdir -p "${output_subdir}"
+    mkdir -p "${model_dir_name}"
     initialize_log_file "${log_file}"
 
     {
         echo -e "\n=== Starting Transcription ===\n"
         python3 crisperwhisper.py \
             --input_dir "${input_dir}" \
-            --output_dir "${output_subdir}" \
+            --output_dir "${model_dir_name}" \
             --model "${model}" \
             --chunk_length "${chunk_len}" \
             --batch_size "${batch_size}" \
@@ -232,7 +232,7 @@ run_experiment() {
 
         echo -e "\n=== Calculating WER ===\n"
         python3 new_wer_calculator.py \
-            -i "${output_subdir}/manifest.json" \
+            -i "${output_subdir}/${batch_size}_${chunk_length}.json" \
             -v || {
                 echo "ERROR: WER calculation failed for ${output_subdir}/manifest.json"
                 exit 1
