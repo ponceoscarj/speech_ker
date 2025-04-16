@@ -114,13 +114,13 @@ validate_timestamp() {
 # ==============================================================================
 parse_parameters() {
     local parsed_args
-    # parsed_args=$(getopt -o m:i:o:c:b:t:e:s:h \
-    #             --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
-    #             -n "$0" -- "$@") || { show_help; exit 1; }
-    parsed_args=$(/usr/local/opt/gnu-getopt/bin/getopt \
-    -o m:i:o:c:b:t:e:s:h \
-    --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
-    -n "$0" -- "$@") || { show_help; exit 1; }
+    parsed_args=$(getopt -o m:i:o:c:b:t:e:s:h \
+                --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
+                -n "$0" -- "$@") || { show_help; exit 1; }
+    # parsed_args=$(/usr/local/opt/gnu-getopt/bin/getopt \
+    # -o m:i:o:c:b:t:e:s:h \
+    # --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
+    # -n "$0" -- "$@") || { show_help; exit 1; }
     
     eval set -- "${parsed_args}"
 
@@ -207,12 +207,14 @@ run_experiment() {
     local experiment_dir="$3"
     
     local model_dir_name=$(basename "${experiment_dir}")
+    local output_filename="${model_dir_name}_b${batch_size}_c${chunk_len}"
 
     echo "Running configuration:"
     echo "  - Chunk length: ${chunk_len}s"
     echo "  - Batch size: ${batch_size}"
     echo "  - Timestamp: ${timestamp}"
-    
+    echo "  - Output filename: ${output_filename}"
+
     mkdir -p "${model_dir_name}"
     initialize_log_file "${log_file}"
 
@@ -221,6 +223,7 @@ run_experiment() {
         python3 crisperwhisper.py \
             --input_dir "${input_dir}" \
             --output_dir "${model_dir_name}" \
+            --output_filename "${output_filename}" \
             --model "${model}" \
             --chunk_length "${chunk_len}" \
             --batch_size "${batch_size}" \

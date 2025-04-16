@@ -1,11 +1,4 @@
-import argparse
-import json
-import os
-import sys
-import torch
-from datetime import datetime
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
-import jiwer
+
 '''
 Modification of https://github.com/nyrahealth/CrisperWhisper/blob/main/transcribe.py 
 
@@ -16,6 +9,7 @@ python crisperwhisper.py --input_dir /Users/oscarponce/Documents/PythonProjects/
                 --chunk_length 30 \
                 --batch_size 1 \
                 --timestamps none \
+                --
                 --extensions .wav
 
 
@@ -23,6 +17,14 @@ Notes:
 --extensions .wav . mp3 #can accept multiple
 In --output_dir insert the correct model, be as specific as possible (e.g., canary-1b, canary-1b-flash, canary-180m)
 '''
+import argparse
+import json
+import os
+import sys
+import torch
+from datetime import datetime
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+import jiwer
 
 def read_gold_transcription(audio_path):
     base_name = os.path.splitext(audio_path)[0]
@@ -35,19 +37,7 @@ def read_gold_transcription(audio_path):
 def calculate_wer(reference, hypothesis):
     return jiwer.wer(reference, hypothesis)
 
-class Tee:
-    """Duplicate output to both console and log file"""
-    def __init__(self, *files):
-        self.files = files
-        
-    def write(self, text):
-        for f in self.files:
-            f.write(text)
-            f.flush()
-            
-    def flush(self):
-        for f in self.files:
-            f.flush()
+# REMOVED: Tee class and log file handling
 
 def main():
     parser = argparse.ArgumentParser(description="Transcribe an audio file.")
@@ -57,6 +47,8 @@ def main():
                        help="Output directory for transcriptions")
     parser.add_argument("--model", type=str, default="nyrahealth/CrisperWhisper",
                        help="ASR model identifier from Hugging Face Hub or local path")
+    parser.add_argument("--output_filename", type=str, default="",
+                       help="Custom base name for output JSON file (optional)")    
     parser.add_argument("--chunk_length", type=int, default=30,
                      help="Length of audio chunks in seconds")
     parser.add_argument("--batch_size", type=int, default=1,
@@ -70,115 +62,116 @@ def main():
 
     args = parser.parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
-    log_dir = os.path.join(args.output_dir, "logs")
-    os.makedirs(log_dir, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = os.path.join(log_dir, f"transcription_log_{timestamp}.txt")
+    # REMOVED: Log directory creation and log file setup
 
-    original_stdout = sys.stdout
-    original_stderr = sys.stderr
+    try:
+        # CHANGED: Simplified startup messages
+        print(f"\n=== Transcription Started ===")
+        print(f"Timestamp: {datetime.now().isoformat()}")
+        print(f"Command: {' '.join(sys.argv)}")
+        
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+        print(f"Using device: {'GPU' if 'cuda' in device else 'CPU'}")
+        print(f"Output directory: {args.output_dir}\n")
 
-    with open(log_file, 'w') as f:
-        sys.stdout = Tee(sys.stdout, f)
-        sys.stderr = Tee(sys.stderr, f)
+        model = AutoModelForSpeechSeq2Seq.from_pretrained(
+            args.model, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+        )
+        model.to(device)
 
-        try:
-            print(f"Transcription Log - {timestamp}")
-            print(f"Command: {' '.join(sys.argv)}")
-            device = "cuda:0" if torch.cuda.is_available() else "cpu"
-            torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-            device_type = "GPU" if "cuda" in device else "CPU"
-            print(f"Using device: {device_type}")
-            print(f"Output directory: {args.output_dir}\n")
+        processor = AutoProcessor.from_pretrained(args.model)
 
-            model = AutoModelForSpeechSeq2Seq.from_pretrained(
-                args.model, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
-            )
-            model.to(device)
+        pipe = pipeline(
+            "automatic-speech-recognition",
+            model=model,
+            tokenizer=processor.tokenizer,
+            feature_extractor=processor.feature_extractor,
+            chunk_length_s=args.chunk_length,
+            batch_size=args.batch_size,
+            return_timestamps=args.timestamps if args.timestamps != "none" else False,
+            torch_dtype=torch_dtype,
+            device=device
+        )
 
-            processor = AutoProcessor.from_pretrained(args.model)
+        audio_files = [
+            f for f in os.listdir(args.input_dir)
+            if os.path.splitext(f)[1].lower() in args.extensions
+        ]
 
-            pipe = pipeline(
-                "automatic-speech-recognition",
-                model=model,
-                tokenizer=processor.tokenizer,
-                feature_extractor=processor.feature_extractor,
-                chunk_length_s=args.chunk_length,
-                batch_size=args.batch_size,
-                return_timestamps=args.timestamps if args.timestamps != "none" else False,
-                torch_dtype=torch_dtype,
-                device=device
-            )
+        if not audio_files:
+            print(f"Error: No audio files found with extensions {args.extensions} in {args.input_dir}")
+            sys.exit(1)
 
-            audio_files = [
-                f for f in os.listdir(args.input_dir)
-                if os.path.splitext(f)[1].lower() in args.extensions
-            ]
+        results = []
+        total_wer = 0
+        valid_wer_count = 0
 
-            if not audio_files:
-                print(f"No audio files found with extensions {args.extensions} in {args.input_dir}")
-                sys.exit(1)
+        batch_size = args.batch_size
+        audio_batches = [audio_files[i:i + batch_size] for i in range(0, len(audio_files), batch_size)]
 
-            results = []
-            total_wer = 0
-            valid_wer_count = 0
+        for batch in audio_batches:
+            batch_file_paths = [os.path.join(args.input_dir, f) for f in batch]
+            try:
+                batch_results = pipe(batch_file_paths)
+            except Exception as e:
+                print(f"Error processing batch: {str(e)}")
+                for audio_file in batch:
+                    entry = {
+                        "audio_file_path": os.path.join(args.input_dir, audio_file),
+                        "error": str(e)
+                    }
+                    results.append(entry)
+                continue
 
-            batch_size = args.batch_size
-            audio_batches = [audio_files[i:i + batch_size] for i in range(0, len(audio_files), batch_size)]
-
-            for batch in audio_batches:
-                batch_file_paths = [os.path.join(args.input_dir, f) for f in batch]
+            for audio_file, result in zip(batch, batch_results):
+                entry = {"audio_file_path": os.path.join(args.input_dir, audio_file)}
                 try:
-                    batch_results = pipe(batch_file_paths)
-                except Exception as e:
-                    print(f"Error processing batch: {str(e)}")
-                    for audio_file in batch:
-                        entry = {
-                            "audio_file_path": os.path.join(args.input_dir, audio_file),
-                            "error": str(e)
-                        }
-                        results.append(entry)
-                    continue
+                    predicted_text = result.get("text", "")
+                    entry["predicted_transcription"] = predicted_text
 
-                for audio_file, result in zip(batch, batch_results):
-                    entry = {"audio_file_path": os.path.join(args.input_dir, audio_file)}
-                    try:
-                        predicted_text = result.get("text", "")
-                        entry["predicted_transcription"] = predicted_text
-
-                        if args.gold_standard:
-                            gold_text = read_gold_transcription(entry["audio_file_path"])
-                            entry["gold_transcription"] = gold_text if gold_text else "N/A"
-                            if gold_text:
-                                wer = calculate_wer(gold_text, predicted_text)
-                                entry["wer"] = wer
-                                total_wer += wer
-                                valid_wer_count += 1
-                            else:
-                                entry["wer"] = "N/A"
-
-                        results.append(entry)
+                    if args.gold_standard:
+                        gold_text = read_gold_transcription(entry["audio_file_path"])
+                        entry["gold_transcription"] = gold_text if gold_text else "N/A"
+                        if gold_text:
+                            wer = calculate_wer(gold_text, predicted_text)
+                            entry["wer"] = wer
+                            total_wer += wer
+                            valid_wer_count += 1
+                            print(f"Processed {audio_file} - WER: {wer:.2f}")
+                        else:
+                            entry["wer"] = "N/A"
+                            print(f"Processed {audio_file} - No gold standard")
+                    else:
                         print(f"Processed {audio_file}")
 
-                    except Exception as e:
-                        print(f"Error processing {audio_file}: {str(e)}")
-                        entry["error"] = str(e)
-                        results.append(entry)
+                    results.append(entry)
 
-            output_json = os.path.join(args.output_dir, "results.json")
-            with open(output_json, "w") as f:
-                json.dump(results, f, indent=4)
+                except Exception as e:
+                    print(f"Error processing {audio_file}: {str(e)}")
+                    entry["error"] = str(e)
+                    results.append(entry)
 
-            if args.gold_standard and valid_wer_count > 0:
-                avg_wer = total_wer / valid_wer_count
-                print(f"\nAverage Word Error Rate: {avg_wer:.4f} (calculated over {valid_wer_count} files)")
-            else:
-                print("\nNo valid WER calculations were possible - missing gold standards")
+        filename_components = [args.output_filename, f"{args.batch_size}", f"{args.chunk_length}"]
 
-        finally:
-            sys.stdout = original_stdout
-            sys.stderr = original_stderr
+        json_name = "_".join(filename_components) + ".json"
+        output_json = os.path.join(args.output_dir, json_name)        
+        with open(output_json, "w") as f:
+            json.dump(results, f, indent=4)
+
+        if args.gold_standard and valid_wer_count > 0:
+            avg_wer = total_wer / valid_wer_count
+            print(f"\n=== Summary ===")
+            print(f"Average Word Error Rate: {avg_wer:.4f}")
+            print(f"Processed files: {valid_wer_count}")
+        else:
+            print("\n=== Completed ===")
+            print(f"Processed files: {len(audio_files)}")
+
+    except Exception as e:
+        print(f"\nFatal error: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
