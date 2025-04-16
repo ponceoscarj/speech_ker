@@ -25,6 +25,11 @@ import torch
 from datetime import datetime
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 import jiwer
+import warnings
+
+# Suppress specific warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
 
 def read_gold_transcription(audio_path):
     base_name = os.path.splitext(audio_path)[0]
@@ -67,7 +72,7 @@ def main():
 
     try:
         # CHANGED: Simplified startup messages
-        print(f"\n=== Transcription Started ===")
+        print(f"\n=== Transcription form crisperwhisper.py Started ===")
         print(f"Timestamp: {datetime.now().isoformat()}")
         print(f"Command: {' '.join(sys.argv)}")
         
@@ -77,7 +82,11 @@ def main():
         print(f"Output directory: {args.output_dir}\n")
 
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            args.model, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+            args.model, 
+            torch_dtype=torch_dtype, 
+            low_cpu_mem_usage=True, 
+            use_safetensors=True,
+            attn_implementation="sdpa" if torch.cuda.is_available() else None            
         )
         model.to(device)
 
@@ -88,12 +97,15 @@ def main():
             model=model,
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
-            model_kwargs={"use_input_features":True},
             chunk_length_s=args.chunk_length,
             batch_size=args.batch_size,
             return_timestamps=args.timestamps if args.timestamps != "none" else False,
             torch_dtype=torch_dtype,
-            device=device
+            device=device,
+            generate_kwargs={
+                "language": "en",
+                "task": "transcribe",
+                "return_timestamps": "none"}            
         )
 
         audio_files = [

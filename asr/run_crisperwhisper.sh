@@ -6,7 +6,7 @@
 # This script automates running speech recognition experiments with various 
 # configurations and calculates Word Error Rate (WER).
 # ==============================================================================
-set -x
+# set -x
 # set -eo pipefail  # Exit on error and pipe failures
 
 # Example Usage:
@@ -225,7 +225,7 @@ run_experiment() {
 
     {
         echo -e "\n=== Starting Transcription ===\n"
-        python3 crisperwhisper.py \
+        python -u crisperwhisper.py \
             --input_dir "${input_dir}" \
             --output_dir "${model_dir_name}" \
             --output_filename "${output_filename}" \
@@ -240,7 +240,7 @@ run_experiment() {
 
 
         echo -e "\n=== Calculating WER ===\n"
-        python3 new_wer_calculator.py \
+        python -u new_wer_calculator.py \
             -i "${model_dir_name}/${output_filename}.json" \
             -v || {
                 echo "ERROR: WER calculation failed for ${model_dir_name}/${output_filename}.json"
