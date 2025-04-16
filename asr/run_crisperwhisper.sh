@@ -240,9 +240,9 @@ run_experiment() {
 
         echo -e "\n=== Calculating WER ===\n"
         python3 new_wer_calculator.py \
-            -i "${output_subdir}/${batch_size}_${chunk_length}.json" \
+            -i "${model_dir_name}/${output_filename}.json" \
             -v || {
-                echo "ERROR: WER calculation failed for ${output_subdir}/manifest.json"
+                echo "ERROR: WER calculation failed for ${model_dir_name}/${output_filename}.json"
                 exit 1
             }
 
