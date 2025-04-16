@@ -238,6 +238,7 @@ run_experiment() {
                 exit 1
             }
 
+
         echo -e "\n=== Calculating WER ===\n"
         python3 new_wer_calculator.py \
             -i "${model_dir_name}/${output_filename}.json" \
