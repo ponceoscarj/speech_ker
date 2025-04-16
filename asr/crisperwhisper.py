@@ -100,8 +100,7 @@ def main():
             chunk_length_s=args.chunk_length,
             batch_size=args.batch_size,
             return_timestamps=args.timestamps if args.timestamps != "none" else False,
-            torch_dtype=torch_dtype,
-            device=device)
+            torch_dtype=torch_dtype)
         
     with tqdm(total=3, desc="Loading Data") as bar:
         # Parallel audio loading with memory mapping
