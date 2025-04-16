@@ -91,6 +91,7 @@ def main():
         model.to(device)
 
         processor = AutoProcessor.from_pretrained(args.model)
+        processor.feature_extractor.return_attention_mask = True
 
         pipe = pipeline(
             "automatic-speech-recognition",
@@ -101,12 +102,7 @@ def main():
             batch_size=args.batch_size,
             return_timestamps=args.timestamps if args.timestamps != "none" else False,
             torch_dtype=torch_dtype,
-            device=device,
-            generate_kwargs={
-                "language": "en",
-                "task": "transcribe",
-                "return_timestamps": "none"}            
-        )
+            device=device)
 
         audio_files = [
             f for f in os.listdir(args.input_dir)
