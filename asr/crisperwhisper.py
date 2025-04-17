@@ -157,7 +157,13 @@ def main():
                         valid_wer_count += 1
                         wer_bar.update(1)
                         wer_bar.set_postfix(current_wer=f"{wer:.2f}")
-                print(f'Processed {args.batch_size}. WER = {wer}')
+                      
+                # Safely print based on whether WER was calculated
+                if args.gold_standard and gold_text:
+                  print(f'Processed {args.batch_size}. WER = {wer}')
+                else:
+                  print(f'Processed {args.batch_size}.')
+                  
                 results.append(entry)
                 main_bar.update(1)
 
