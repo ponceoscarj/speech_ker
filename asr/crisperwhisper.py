@@ -172,7 +172,11 @@ def main():
         wer_bar.close()
 
     # ====================== Save Results ======================
-    output_file = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}.json")
+    if args.output_filename:
+      output_file = os.path.join(args.output_dir, f"{args.output_filename}.json")
+    else: 
+      output_file = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}.json")
+      
     with open(output_file, "w") as f:
         json.dump(results, f, indent=2)
 
