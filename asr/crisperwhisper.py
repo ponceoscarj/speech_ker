@@ -125,7 +125,7 @@ def main():
 
     results = []
     total_wer = 0
-    valid_wer_count = 
+    valid_wer_count = 0
   
     start_time = time.time()
   
