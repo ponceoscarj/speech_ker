@@ -180,7 +180,7 @@ cd CrisperWhisper
  pip install jiwer # for WER calculation
  ```
 
-4. Install FlashAttention (for Speed-up):
+4. Install [FlashAttention](https://github.com/Dao-AILab/flash-attention) (for Speed-up):
    
 **Requirements:**
 
