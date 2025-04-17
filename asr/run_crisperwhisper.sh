@@ -233,7 +233,8 @@ run_experiment() {
             --chunk_length "${chunk_len}" \
             --batch_size "${batch_size}" \
             --timestamps "${timestamp}" \
-            --extensions "${extensions}" || {
+            --extensions "${extensions}" \
+            --gold_standard || {
                 echo "ERROR: Transcription failed for chunk ${chunk_len}, batch ${batch_size}"
                 exit 1
             }
