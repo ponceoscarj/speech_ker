@@ -22,6 +22,7 @@ import json
 import os
 import sys
 import torch
+from pathlib import Path
 from datetime import datetime
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 from datasets import load_dataset, Audio
@@ -34,11 +35,10 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
 
 def read_gold_transcription(audio_path):
-    base_name = os.path.splitext(audio_path)[0]
-    txt_path = base_name + ".txt"
-    if os.path.exists(txt_path):
-        with open(txt_path, "r") as f:
-            return f.read().strip()
+    base_name = Path(audio_path).resolve()
+    txt_path = audio_path.with_suffix('.txt')
+    if txt_path.exists():
+        return txt_path.read_text().strip()
     return None
 
 def calculate_wer(reference, hypothesis):
@@ -112,7 +112,7 @@ def main():
         bar.update(1)
         
         # Prepare file paths
-        audio_paths = [os.path.join(args.input_dir, x['audio']['path'].split('/')[-1]) for x in dataset]
+        audio_paths = [str(Path(x['audio']['path']).resolve()) for x in dataset]
         bar.update(1)        
     
     total_files = len(dataset)
@@ -142,8 +142,11 @@ def main():
                 }
                 
                 # WER calculation
+                
                 if args.gold_standard:
+                    print(args.gold_standard)
                     gold_text = read_gold_transcription(path)
+                    print('gold_text', 'gold')
                     entry["gold_transcription"] = gold_text or "N/A"
                     print(gold_text)
                     
