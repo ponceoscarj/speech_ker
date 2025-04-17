@@ -35,7 +35,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
 
 def read_gold_transcription(audio_path):
-    base_name = Path(audio_path).resolve()
+    audio_path = Path(audio_path).resolve()
     txt_path = audio_path.with_suffix('.txt')
     if txt_path.exists():
         return txt_path.read_text().strip()
