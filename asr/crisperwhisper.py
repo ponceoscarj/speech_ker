@@ -35,6 +35,11 @@ import time
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
 
+def real_time_factor(processingTime, audioLength, decimals=4):
+  if audioLength == 0:
+    return None
+  return round(processingTime / audioLength, decimals)
+
 def read_gold_transcription(audio_path):
     audio_path = Path(audio_path).resolve()
     txt_path = audio_path.with_suffix('.txt')
@@ -115,9 +120,9 @@ def main():
         # Prepare file paths
         audio_paths = [str(Path(x['audio']['path']).resolve()) for x in dataset]
         bar.update(1)    
-      
-        # Calculate total audio duration
-        total_audio_duration = sum([x['audio']['duration'] for x in dataset])
+
+        # Calculate total audio duration (manually from samples and rate)
+        total_audio_duration = sum([len(x['audio']['array']) / x['audio']['sampling_rate'] for x in dataset])
 
     total_files = len(dataset)
     main_bar = tqdm(total=total_files, desc="Transcribing", unit="file")
@@ -126,9 +131,8 @@ def main():
     results = []
     total_wer = 0
     valid_wer_count = 0
-  
     start_time = time.time()
-  
+
 
     try:
         for i in range(0, len(dataset), args.batch_size):
@@ -177,25 +181,39 @@ def main():
     finally:
         main_bar.close()
         wer_bar.close()
-
+      
     end_time = time.time()
     processing_time = end_time - start_time
 
     # ====================== Save Results ======================
+    rtf = real_time_factor(processing_time, total_audio_duration)
+    total_audio_minutes = total_audio_duration / 60
+  
     if args.output_filename:
       output_file = os.path.join(args.output_dir, f"{args.output_filename}.json")
     else: 
       output_file = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}.json")
-      
+
+    final_results = {
+      "results": results,
+      "metadata": {
+        "processing_time_seconds": processing_time,
+        "total_audio_duration_seconds": total_audio_duration,
+        "real_time_factor": rtf
+    }
+}
+
     with open(output_file, "w") as f:
         json.dump(results, f, indent=2)
-      
-    if total_audio_duration > 0:
-      rtf = processing_time / total_audio_duration
-      print(f"\nReal-Time Factor (RTF): {rtf:.4f}")
+
+    print(f"Total Processing Time: {processing_time:.2f} seconds")
+    print(f"Total Audio Duration: {total_audio_minutes:.2f} minutes")
+
+    if rtf is not None:
+      print(f"\nReal-Time Factor (RTF): {rtf}")
     else:
       print("\nWarning: Total audio duration is zero, cannot calculate RTF.")
-
+  
     if args.gold_standard and valid_wer_count > 0:
         print(f"\nAverage WER: {total_wer/valid_wer_count:.2f}")
     print(f"\nProcessing complete. Results saved to {output_file}")
