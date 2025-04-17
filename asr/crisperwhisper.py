@@ -29,6 +29,7 @@ from datasets import load_dataset, Audio
 import jiwer
 import warnings
 from tqdm import tqdm
+import time
 
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -110,18 +111,24 @@ def main():
         # Resample to 16kHz in parallel
         dataset = dataset.cast_column("audio", Audio(sampling_rate=16000))
         bar.update(1)
-        
+
         # Prepare file paths
         audio_paths = [str(Path(x['audio']['path']).resolve()) for x in dataset]
-        bar.update(1)        
-    
+        bar.update(1)    
+      
+        # Calculate total audio duration
+        total_audio_duration = sum([x['audio']['duration'] for x in dataset])
+
     total_files = len(dataset)
     main_bar = tqdm(total=total_files, desc="Transcribing", unit="file")
     wer_bar = tqdm(total=total_files, desc="WER_calculation", leave=False)
 
     results = []
     total_wer = 0
-    valid_wer_count = 0
+    valid_wer_count = 
+  
+    start_time = time.time()
+  
 
     try:
         for i in range(0, len(dataset), args.batch_size):
@@ -171,6 +178,9 @@ def main():
         main_bar.close()
         wer_bar.close()
 
+    end_time = time.time()
+    processing_time = end_time - start_time
+
     # ====================== Save Results ======================
     if args.output_filename:
       output_file = os.path.join(args.output_dir, f"{args.output_filename}.json")
@@ -179,6 +189,12 @@ def main():
       
     with open(output_file, "w") as f:
         json.dump(results, f, indent=2)
+      
+    if total_audio_duration > 0:
+      rtf = processing_time / total_audio_duration
+      print(f"\nReal-Time Factor (RTF): {rtf:.4f}")
+    else:
+      print("\nWarning: Total audio duration is zero, cannot calculate RTF.")
 
     if args.gold_standard and valid_wer_count > 0:
         print(f"\nAverage WER: {total_wer/valid_wer_count:.2f}")
