@@ -213,22 +213,25 @@ def main():
   
     if args.output_filename:
       output_file = os.path.join(args.output_dir, f"{args.output_filename}.json")
+      meta_file    = os.path.join(args.output_dir, f"{args.output_filename}_meta.json")
     else: 
       output_file = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}.json")
-
-    final_results = {
-      "results": results,
-      "metadata": {
-        "processing_time_seconds": processing_time,
-        "total_audio_duration_seconds": total_audio_duration,
-        "real_time_factor": rtf,
-        "batch_rtf_list": batch_rtf_list
-      }
-    }
+      meta_file    = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}_meta.json")
 
     with open(output_file, "w") as f:
-        json.dump(final_results, f, indent=2)
+        json.dump(results, f, indent=2)
 
+    meta = {
+      "processing_time_seconds": processing_time,
+      "total_audio_duration_seconds": total_audio_duration,
+      "real_time_factor": rtf,
+      "batch_rtf_list": batch_rtf_list
+  }
+    with open(meta_file, "w") as f:
+        json.dump(meta, f, indent=2)
+
+    print(f"Transcriptions saved to {results_file}")
+    print(f"Run metadata saved to   {meta_file}")
     print(f"Total Processing Time: {processing_time:.2f} seconds")
     print(f"Total Audio Duration: {total_audio_minutes:.2f} minutes")
 
@@ -240,7 +243,6 @@ def main():
     if args.gold_standard and valid_wer_count > 0:
         print(f"\nAverage WER: {total_wer/valid_wer_count:.2f}")
     print(f"\nProcessing complete. Results saved to {output_file}")
-
 
 if __name__ == "__main__":
     main()
