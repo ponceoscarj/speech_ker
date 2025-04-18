@@ -142,14 +142,13 @@ def main():
             # Show current file being processed
             main_bar.set_postfix(file=os.path.basename(batch_paths[0]))
 
-            # Move audio to GPU
-            audio_arrays = [torch.tensor(x["array"]).to(device) for x in batch["audio"]]
+            batch_audio_arrays = [x["array"] for x in batch["audio"]]
 
             # Start batch timer
             batch_start_time = time.time()
 
             with torch.inference_mode():
-              outputs = pipe(audio_arrays)
+              outputs = pipe(batch_audio_arrays)
 
             # End batch timer
             batch_end_time = time.time()
