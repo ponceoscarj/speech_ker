@@ -225,7 +225,7 @@ run_experiment() {
 
     {
         echo -e "\n=== Starting Transcription ===\n"
-        python -u crisperwhisper.py \
+        python -u crisperwhisper_opt.py \
             --input_dir "${input_dir}" \
             --output_dir "${model_dir_name}" \
             --output_filename "${output_filename}" \
