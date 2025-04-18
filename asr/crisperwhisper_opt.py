@@ -219,7 +219,8 @@ def main():
       meta_file    = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}_meta.json")
 
     with open(results_file, "w") as f:
-        json.dump(results, f, indent=2)
+      for entry in results: 
+        f.write(json.dumps(entry) + "\n") 
 
     meta = {
       "processing_time_seconds": processing_time,
