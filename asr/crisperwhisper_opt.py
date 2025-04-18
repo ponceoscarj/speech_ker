@@ -132,7 +132,7 @@ def main():
     total_wer = 0
     valid_wer_count = 0
     start_time = time.time()
-
+    batch_rtf_list = []
 
     try:
         for i in range(0, len(dataset), args.batch_size):
@@ -141,9 +141,32 @@ def main():
             
             # Show current file being processed
             main_bar.set_postfix(file=os.path.basename(batch_paths[0]))
-            
-            # Batch inference
-            outputs = pipe([x["array"] for x in batch["audio"]])
+
+            # Move audio to GPU
+            audio_arrays = [torch.tensor(x["array"]).to(device) for x in batch["audio"]]
+
+            # Start batch timer
+            batch_start_time = time.time()
+
+            with torch.inference_mode():
+              outputs = pipe(audio_arrays)
+
+            # End batch timer
+            batch_end_time = time.time()
+            batch_processing_time = batch_end_time - batch_start_time
+  
+            # Calculate batch audio duration
+            batch_audio_duration = sum([len(x["array"]) / x["sampling_rate"] for x in batch["audio"]])
+        
+            # Calculate batch RTF
+            batch_rtf = real_time_factor(batch_processing_time, batch_audio_duration)
+
+            # Print and save batch RTF
+            if batch_rtf is not None:
+              print(f"Batch {i // args.batch_size + 1}: Processing Time = {batch_processing_time:.2f} sec, RTF = {batch_rtf:.4f}")
+              batch_rtf_list.append(batch_rtf)  # ✅ Save batch RTF to list
+            else:
+              print(f"Batch {i // args.batch_size + 1}: Audio duration zero, cannot calculate RTF.")
             
             # Process results
             for path, result in zip(batch_paths, outputs):
@@ -199,12 +222,13 @@ def main():
       "metadata": {
         "processing_time_seconds": processing_time,
         "total_audio_duration_seconds": total_audio_duration,
-        "real_time_factor": rtf
+        "real_time_factor": rtf,
+        "batch_rtf_list": batch_rtf_list
+      }
     }
-}
 
     with open(output_file, "w") as f:
-        json.dump(results, f, indent=2)
+        json.dump(final_results, f, indent=2)
 
     print(f"Total Processing Time: {processing_time:.2f} seconds")
     print(f"Total Audio Duration: {total_audio_minutes:.2f} minutes")
