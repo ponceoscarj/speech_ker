@@ -70,7 +70,7 @@ def main():
                      help="Type of timestamps to include")
     parser.add_argument("--extensions", nargs="+", default=[".wav", ".mp3", ".flac"],
                      help="Audio file extensions to process")
-    parser.add_argument("--gold_standard", action="store_true",
+    parser.add_argument("--gold_standard", action="store_true",default=True,
                        help="Enable WER calculation using gold standard transcriptions")
 
     args = parser.parse_args()
