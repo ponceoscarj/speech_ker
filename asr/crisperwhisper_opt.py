@@ -212,13 +212,13 @@ def main():
     total_audio_minutes = total_audio_duration / 60
   
     if args.output_filename:
-      output_file = os.path.join(args.output_dir, f"{args.output_filename}.json")
+      results_file = os.path.join(args.output_dir, f"{args.output_filename}.json")
       meta_file    = os.path.join(args.output_dir, f"{args.output_filename}_meta.json")
     else: 
-      output_file = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}.json")
+      results_file = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}.json")
       meta_file    = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}_meta.json")
 
-    with open(output_file, "w") as f:
+    with open(results_file, "w") as f:
         json.dump(results, f, indent=2)
 
     meta = {
@@ -226,7 +226,7 @@ def main():
       "total_audio_duration_seconds": total_audio_duration,
       "real_time_factor": rtf,
       "batch_rtf_list": batch_rtf_list
-  }
+    }
     with open(meta_file, "w") as f:
         json.dump(meta, f, indent=2)
 
@@ -242,7 +242,7 @@ def main():
   
     if args.gold_standard and valid_wer_count > 0:
         print(f"\nAverage WER: {total_wer/valid_wer_count:.2f}")
-    print(f"\nProcessing complete. Results saved to {output_file}")
+    print(f"\nProcessing complete. Results saved to {results_file}")
 
 if __name__ == "__main__":
     main()
