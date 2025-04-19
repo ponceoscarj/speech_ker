@@ -9,7 +9,6 @@ python crisperwhisper.py --input_dir /Users/oscarponce/Documents/PythonProjects/
                 --chunk_length 30 \
                 --batch_size 1 \
                 --timestamps none \
-                --
                 --extensions .wav
 
 
@@ -148,8 +147,7 @@ def main():
             # Process results
             for path, result in zip(batch_paths, outputs):
                 entry = {
-                    "audio_file_path": path,
-                    "predicted_transcription": result.get("text", "")
+                    "audio_file_path": path
                 }
                 
                 # WER calculation
@@ -157,12 +155,10 @@ def main():
                 if args.gold_standard:
                     print(args.gold_standard)
                     gold_text = read_gold_transcription(path)
-                    print('gold_text', 'gold')
-                    entry["gold_transcription"] = gold_text or "N/A"
-                    print(gold_text)
+                    entry["text"] = gold_text or "N/A"
                     
                     if gold_text:
-                        wer = calculate_wer(gold_text, entry["predicted_transcription"])
+                        wer = calculate_wer(gold_text, entry["pred_text"])
                         entry["wer"] = wer
                         total_wer += wer
                         valid_wer_count += 1
@@ -202,7 +198,7 @@ def main():
         "real_time_factor": rtf
     }
 }
-
+    
     with open(output_file, "w") as f:
         json.dump(results, f, indent=2)
 
