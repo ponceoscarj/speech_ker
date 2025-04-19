@@ -134,6 +134,7 @@ def main():
     start_time = time.time()
     batch_rtf_list = []
 
+    
     try:
         for i in range(0, len(dataset), args.batch_size):
             batch = dataset[i:i+args.batch_size]
@@ -163,7 +164,7 @@ def main():
             # Print and save batch RTF
             if batch_rtf is not None:
               print(f"Batch {i // args.batch_size + 1}: Processing Time = {batch_processing_time:.2f} sec, RTF = {batch_rtf:.4f}")
-              batch_rtf_list.append(batch_rtf)  # ✅ Save batch RTF to list
+              batch_rtf_list.append(batch_rtf)  #  Save batch RTF to list
             else:
               print(f"Batch {i // args.batch_size + 1}: Audio duration zero, cannot calculate RTF.")
             
@@ -210,7 +211,10 @@ def main():
     # ====================== Save Results ======================
     rtf = real_time_factor(processing_time, total_audio_duration)
     total_audio_minutes = total_audio_duration / 60
-  
+
+    print('\ncrisperwhisper_opt.py\n','input_dir', args.input_dir)
+    print('results_file', results_file, '\n')
+
     if args.output_filename:
       results_file = os.path.join(args.output_dir, f"{args.output_filename}.json")
       meta_file    = os.path.join(args.output_dir, f"{args.output_filename}_meta.json")

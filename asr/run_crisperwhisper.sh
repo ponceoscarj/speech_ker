@@ -205,7 +205,6 @@ run_experiment() {
     local batch_size="$1"
     local chunk_len="$2"
     local experiment_dir="$3"
-    
     local model_dir_name=$(basename "${experiment_dir}")
     local output_filename="${model_dir_name}_b${batch_size}_c${chunk_len}"
 
@@ -228,7 +227,7 @@ run_experiment() {
         echo -e "\n=== Starting Transcription ===\n"
         python -u crisperwhisper_opt.py \
             --input_dir "${input_dir}" \
-            --output_dir "${model_dir_name}" \
+            --output_dir "${experiment_dir}" \
             --output_filename "${output_filename}" \
             --model "${model}" \
             --chunk_length "${chunk_len}" \
@@ -243,9 +242,9 @@ run_experiment() {
 
         echo -e "\n=== Calculating WER ===\n"
         python -u new_wer_calculator.py \
-            -i "${model_dir_name}/${output_filename}.json" \
+            -i "${experiment_dir}/${output_filename}.json" \
             -v || {
-                echo "ERROR: WER calculation failed for ${model_dir_name}/${output_filename}.json"
+                echo "ERROR: WER calculation failed for ${experiment_dir}/${output_filename}.json"
                 exit 1
             }
 

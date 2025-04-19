@@ -82,6 +82,8 @@ def main():
             except json.JSONDecodeError:
                 sys.exit(f"Error: Invalid JSON at line {line_num}")
 
+    print('\nnew_wer_calculator.py\n',args.input_file, '\n')
+
     # Write back modified entries
     with open(args.input_file, 'w') as f:
         for entry in entries:
