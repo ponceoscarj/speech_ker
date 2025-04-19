@@ -216,6 +216,7 @@ run_experiment() {
     echo "  - Batch size: ${batch_size}"
     echo "  - Timestamp: ${timestamp}"
     echo "  - Output filename: ${output_filename}"
+    echo "  - Input for new_wer_calculator.py: ${model_dir_name}/${output_filename}.json"
     # === FIX 2: Create directory for log ===
     mkdir -p "${experiment_dir}" || {
         echo "ERROR: Failed to create experiment directory"
