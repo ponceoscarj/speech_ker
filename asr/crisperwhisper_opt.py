@@ -170,9 +170,10 @@ def main():
             
             # Process results
             for path, result in zip(batch_paths, outputs):
+                pred_text = result["text"] if isinstance(result, dict) else result                
                 entry = {
                     "audio_file_path": path,
-                    "pred_text": result
+                    "pred_text": pred_text
                 }
                 
                 # WER calculation
