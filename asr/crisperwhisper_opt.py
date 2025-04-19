@@ -171,7 +171,8 @@ def main():
             # Process results
             for path, result in zip(batch_paths, outputs):
                 entry = {
-                    "audio_file_path": path
+                    "audio_file_path": path,
+                    "pred_text": result
                 }
                 
                 # WER calculation
