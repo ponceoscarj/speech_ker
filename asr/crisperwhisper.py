@@ -154,12 +154,11 @@ def main():
                 # WER calculation
                 
                 if args.gold_standard:
-                    print(args.gold_standard)
                     gold_text = read_gold_transcription(path)
                     entry["text"] = gold_text or "N/A"
                     
                     if gold_text:
-                        wer = calculate_wer(gold_text, entry["pred_text"])
+                        wer = calculate_wer(entry["text"], entry["pred_text"])
                         entry["wer"] = wer
                         total_wer += wer
                         valid_wer_count += 1
