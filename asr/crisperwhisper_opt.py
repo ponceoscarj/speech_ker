@@ -212,8 +212,6 @@ def main():
     rtf = real_time_factor(processing_time, total_audio_duration)
     total_audio_minutes = total_audio_duration / 60
 
-    print('\ncrisperwhisper_opt.py\n','input_dir', args.input_dir)
-    print('results_file', results_file, '\n')
 
     if args.output_filename:
       results_file = os.path.join(args.output_dir, f"{args.output_filename}.json")
@@ -221,6 +219,10 @@ def main():
     else: 
       results_file = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}.json")
       meta_file    = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}_meta.json")
+
+    print('\ncrisperwhisper_opt.py\n','input_dir', args.input_dir)
+    print('results_file', results_file, '\n')
+
 
     with open(results_file, "w") as f:
       for entry in results: 
