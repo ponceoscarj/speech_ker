@@ -182,30 +182,29 @@ cd CrisperWhisper
 
 4. Install [FlashAttention](https://github.com/Dao-AILab/flash-attention) (for Speed-up):
    
-**Requirements:**
-
-| Dependency | Installation Command |
-|:-----------|:----------------------|
-| CUDA toolkit or ROCm toolkit | *(Install manually according to your GPU)* |
-| PyTorch 2.2 or above | *(Install manually according to your system)* |
-| `packaging` Python package | `pip install packaging` |
-| `ninja` Python package | `pip install ninja` |
-
+**Requirements**:
+```yaml
+- CUDA toolkit or ROCm toolkit:     *(Install manually according to your GPU)*
+- PyTorch 2.2 or above: 		    Already met with nemo conda environment
+- `packaging`:                      `pip install packaging`
+- `ninja`:                          `pip install ninja`
+```
 **Install FlashAttention:**
 ```bash
 MAX_JOBS=4 pip install flash-attn --no-build-isolation
  ```
 
-5. Accept the license of the model [CrisperWhisper](https://huggingface.co/nyrahealth/CrisperWhisper)
+5. Install the CrisperWhiser model
 
-6. Login into huggingface and introduce your token. 
+- Accept the license of the model [CrisperWhisper](https://huggingface.co/nyrahealth/CrisperWhisper)
+- Login into huggingface and introduce your token. 
 ```bash
 huggingface-cli login
 ```
-7. Download model files to a specific folder:
+- Download model files to a specific folder:
 ```bash
 huggingface-cli download nyrahealth/CrisperWhisper --local-dir [SAVE_DIR]
 ```
-- `[SAVE_DIR]` is your target directory. Inside asr/models. Example: ./asr/models/CrisperWhisper
+*`[SAVE_DIR]` is your target directory. Inside asr/models. Example: ./asr/models/CrisperWhisper*
 
-8. Run the model by using the python script `crisperwhisper.py`
+6. Run the model by using the python script `crisperwhisper.py`
