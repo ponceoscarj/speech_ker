@@ -149,7 +149,8 @@ def main():
             batch_start_time = time.time()
 
             with torch.inference_mode():
-              outputs = pipe(batch_audio_arrays)
+              with torch.cuda.amp.autocast():
+                outputs = pipe(batch_audio_arrays)
 
             # End batch timer
             batch_end_time = time.time()
