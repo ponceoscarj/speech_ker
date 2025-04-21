@@ -9,7 +9,8 @@ from pyannote.core import Segment
 import math
 
 # Configuration
-MODEL_PATH = '/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/'
+PHI4_MODEL_PATH = '/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/phi4'
+PYANNOTE_SEGMENTATION = '/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/pyannote_segmentation'
 CHUNK_DURATION = 30          # Target chunk size in seconds
 OVERLAP_SECONDS = 1.5        # Audio context in seconds to use from both sides (left and right)
 PYANNOTE_TOKEN = "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"
@@ -32,7 +33,7 @@ def load_models() -> tuple:
     device = get_device()
     
     # Load the processor for tokenization and feature extraction.
-    processor = AutoProcessor.from_pretrained(MODEL_PATH, trust_remote_code=True)
+    processor = AutoProcessor.from_pretrained(PHI4_MODEL_PATH, trust_remote_code=True)
     
     # Set the appropriate torch dtype and attention implementation.
     torch_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
@@ -40,7 +41,7 @@ def load_models() -> tuple:
     
     # Load the generation model.
     model = AutoModelForCausalLM.from_pretrained(
-        MODEL_PATH,
+        PHI4_MODEL_PATH,
         trust_remote_code=True,
         torch_dtype=torch_dtype,
         attn_implementation=attn_implementation,
@@ -48,10 +49,7 @@ def load_models() -> tuple:
     )
     
     # Load Pyannote VAD pipeline.
-    segmentation_model = Model.from_pretrained(
-        "pyannote/segmentation-3.0",
-        use_auth_token=PYANNOTE_TOKEN
-    ).to(device)
+    segmentation_model = Model.from_pretrained(PYANNOTE_SEGMENTATION).to(device)
     
     vad_pipeline = VoiceActivityDetection(segmentation=segmentation_model)
     vad_pipeline.to(device)
