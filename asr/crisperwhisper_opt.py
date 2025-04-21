@@ -251,3 +251,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+  
+  if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        print("\n[INFO] GPU cache cleared successfully.")
