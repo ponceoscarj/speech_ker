@@ -1,11 +1,11 @@
 
 '''
-Modification of https://github.com/nyrahealth/CrisperWhisper/blob/main/transcribe.py 
+Modification of https://github.com/ponceoscarj/speech_ker/blob/main/asr/crisperwhisper_opt.py 
 
 Example:
-python crisperwhisper.py --input_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
-                --output_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/output/CrisperWhisper \
-                --model /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/models/CrisperWhisper \
+python lite-whisper-large-v3.py --input_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
+                --output_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/output/lite-whisper-large-v3 \
+                --model /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/models/lite-whisper-large-v3 \
                 --chunk_length 30 \
                 --batch_size 1 \
                 --timestamps none \
