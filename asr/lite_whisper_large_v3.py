@@ -88,16 +88,6 @@ def main():
         forced_decoder_ids = processor.get_decoder_prompt_ids(language="en", task="transcribe")
         bar.update(1)
       
-        pipe = pipeline(
-          "automatic-speech-recognition",
-          model=model,
-          tokenizer=processor.tokenizer,
-          feature_extractor=processor.feature_extractor,
-          chunk_length_s=args.chunk_lengths,    
-          batch_size=args.batch_sizes,
-          return_timestamps=args.timestamp,              
-          torch_dtype=dtype,
-          generate_kwargs={"forced_decoder_ids": forced_decoder_ids})
       
     # ── Load audio dataset ─────────────────────────────────────────────────
     with tqdm(total=2, desc="Loading Data") as bar:
@@ -124,9 +114,12 @@ def main():
         main_bar.set_postfix(file=Path(batch_paths[0]).name)
   
         t0 = time.time()
-        outputs = pipe(batch_arrs)
-        texts = [o["text"] if isinstance(o, dict) else o for o in outputs]
-        t1 = time.time()
+        inputs = processor(batch_arrs, sampling_rate=16000, return_tensors="pt", padding=True).input_features
+        inputs = inputs.to(device).to(dtype)
+        with torch.inference_mode():
+          pred_ids = model.generate(inputs, forced_decoder_ids=forced_decoder_ids)
+
+        texts = processor.batch_decode(pred_ids, skip_special_tokens=True)
 
         # compute RTF
         dur = sum(len(a)/16000 for a in batch_arrs)
