@@ -118,7 +118,7 @@ def main():
         inputs = inputs.to(device).to(dtype)
         
       with torch.inference_mode():
-          pred_ids = model.generate(inputs, forced_decoder_ids=forced_decoder_ids)
+        pred_ids = model.generate(inputs, forced_decoder_ids=forced_decoder_ids)
 
         texts = processor.batch_decode(pred_ids, skip_special_tokens=True)
         t1 = time.time()
