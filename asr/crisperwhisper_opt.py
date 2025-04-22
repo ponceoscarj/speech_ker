@@ -92,7 +92,11 @@ def main():
             low_cpu_mem_usage=True
         )
         bar.update(1)
-
+      
+        if getattr(model.generation_config, "is_multilingual", False):
+          model.generation_config.language = "en"
+          model.generation_config.task = "transcribe"
+  
         processor = AutoProcessor.from_pretrained(args.model)
         bar.update(1)
 
@@ -108,10 +112,6 @@ def main():
             return_timestamps=args.timestamps if args.timestamps != "none" else False,
             torch_dtype=torch_dtype)
       
-        gen_kwargs = {}
-        if getattr(model.generation_config, "is_multilingual", False):
-          gen_kwargs["language"] = "en"
-          gen_kwargs["task"] = "transcribe"
         
     with tqdm(total=3, desc="Loading Data") as bar:
         # Parallel audio loading with memory mapping
@@ -157,7 +157,7 @@ def main():
 
             with torch.inference_mode():
               with torch.cuda.amp.autocast():
-                outputs = pipe(batch_audio_arrays,**gen_kwargs)
+                outputs = pipe(batch_audio_arrays)
                 
 
             # End batch timer
