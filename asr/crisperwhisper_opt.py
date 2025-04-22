@@ -108,10 +108,10 @@ def main():
             return_timestamps=args.timestamps if args.timestamps != "none" else False,
             torch_dtype=torch_dtype)
       
-      gen_kwargs = {}
-      if getattr(model.generation_config, "is_multilingual", False):
-        gen_kwargs["language"] = "en"
-        gen_kwargs["task"] = "transcribe"
+        gen_kwargs = {}
+        if getattr(model.generation_config, "is_multilingual", False):
+          gen_kwargs["language"] = "en"
+          gen_kwargs["task"] = "transcribe"
         
     with tqdm(total=3, desc="Loading Data") as bar:
         # Parallel audio loading with memory mapping
@@ -146,14 +146,12 @@ def main():
     try:
         for i in range(0, len(dataset), args.batch_size):
             batch = dataset[i:i+args.batch_size]
+            batch_audio_arrays = audio_arrays[i:i+args.batch_size]
             batch_paths = audio_paths[i:i+args.batch_size]
             
             # Show current file being processed
             main_bar.set_postfix(file=os.path.basename(batch_paths[0]))
-
-            # Audio arrays
-            batch_audio_arrays = audio_arrays[i:i+args.batch_size]
-
+          
             # Start batch timer
             batch_start_time = time.time()
 
@@ -167,7 +165,7 @@ def main():
             batch_processing_time = batch_end_time - batch_start_time
   
             # Calculate batch audio duration
-            batch_audio_duration = sum([len(x["array"]) / x["sampling_rate"] for x in batch["audio"]])
+            batch_audio_duration = sum([len(arr) / 16000 for arr in batch_audio_arrays])
         
             # Calculate batch RTF
             batch_rtf = real_time_factor(batch_processing_time, batch_audio_duration)
