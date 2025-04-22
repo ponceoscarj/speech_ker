@@ -60,16 +60,18 @@ def main():
                         help="Local path to the ASR model")
     parser.add_argument("--output_filename", type=str, default="",
                         help="Custom base name for output JSON file (optional)")
-    parser.add_argument("--chunk_length", type=int, default=30,
+    parser.add_argument("--chunk_lengths", type=int, default=30,
                         help="Length of audio chunks in seconds")
-    parser.add_argument("--batch_size", type=int, default=1,
+    parser.add_argument("--batch_sizes", type=int, default=1,
                         help="Batch size for processing")
-    parser.add_argument("--timestamps", choices=["word", "segment", "none"], default="segment",
+    parser.add_argument("--timestamp", choices=["word", "segment", "none"], default="segment",
                         help="Type of timestamps to include")
     parser.add_argument("--extensions", nargs="+", default=[".wav", ".mp3", ".flac"],
                         help="Audio file extensions to process")
     parser.add_argument("--gold_standard", action="store_true", default=True,
                         help="Enable WER calculation using gold standard transcriptions")
+    parser.add_argument("--sleep-time", type=int, default=0,
+                    help="Optional sleep time between batches (not used currently)")
 
     args = parser.parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
@@ -104,9 +106,9 @@ def main():
             model=model,
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
-            chunk_length_s=args.chunk_length,
-            batch_size=args.batch_size,
-            return_timestamps=args.timestamps if args.timestamps != "none" else False,
+            chunk_length_s=args.chunk_lengths,
+            batch_size=args.batch_sizes,
+            return_timestamps=args.timestamp if args.timestamp != "none" else False,
             torch_dtype=torch_dtype
         )
     
