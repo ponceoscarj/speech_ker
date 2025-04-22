@@ -230,8 +230,8 @@ run_experiment() {
             --output_dir "${experiment_dir}" \
             --output_filename "${output_filename}" \
             --model "${model}" \
-            --chunk_lengths "${chunk_len}" \
-            --batch_sizes "${batch_size}" \
+            --chunk-lengths "${chunk_len}" \
+            --batch-sizes "${batch_size}" \
             --timestamp "${timestamp}" \
             --extensions "${extensions}" \
             --gold_standard || {
