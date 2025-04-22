@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# CrisperWhisper Experiment Runner
+# lite_whisper_large_v3 Experiment Runner
 # ==============================================================================
 # This script automates running speech recognition experiments with various 
 # configurations and calculates Word Error Rate (WER).
@@ -10,11 +10,11 @@
 # set -eo pipefail  # Exit on error and pipe failures
 
 # Example Usage:
-# bash run_crisperwhisper.sh -m /models/CrisperWhisper -i /audio_files \
+# bash run_lite_whisper_large_v3.sh -m /models/lite_whisper_large_v3 -i /audio_files \
 #     -o /output -c "20 30" -b "2 4" -t "none" -e ".wav"
 #
-# bash run_crisperwhisper.sh \
-#   --model /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/models/crisperwhisper_model \
+# bash run_lite_whisper_large_v3.sh \
+#   --model /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/models/lite_whisper_large_v3 \
 #   --input-dir /home/ext_alzahidy_misk_mayo_edu/speech_ker/audio_files/audio_valid \
 #   --output-dir /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/output \
 #   --chunk-lengths "20 30" \
@@ -225,14 +225,14 @@ run_experiment() {
 
     {
         echo -e "\n=== Starting Transcription ===\n"
-        python -u crisperwhisper_opt.py \
+        python -u lite_whisper_large_v3.py \
             --input_dir "${input_dir}" \
             --output_dir "${experiment_dir}" \
             --output_filename "${output_filename}" \
             --model "${model}" \
-            --chunk_length "${chunk_len}" \
-            --batch_size "${batch_size}" \
-            --timestamps "${timestamp}" \
+            --chunk_lengths "${chunk_len}" \
+            --batch_sizes "${batch_size}" \
+            --timestamp "${timestamp}" \
             --extensions "${extensions}" \
             --gold_standard || {
                 echo "ERROR: Transcription failed for chunk ${chunk_len}, batch ${batch_size}"
