@@ -114,13 +114,20 @@ def main():
         main_bar.set_postfix(file=Path(batch_paths[0]).name)
   
         t0 = time.time()
-        inputs = processor(batch_arrs, sampling_rate=16000, return_tensors="pt", padding=True).input_features
-        inputs = inputs.to(device).to(dtype)
-        
-        with torch.inference_mode():
-          pred_ids = model.generate(inputs, forced_decoder_ids=forced_decoder_ids)
+        chunk_size = args.chunk_lengths * 16000  # 30s chunks
+        texts = []
 
-        texts = processor.batch_decode(pred_ids, skip_special_tokens=True)
+        for arr in batch_arrs:
+          audio_chunks = [arr[i:i+chunk_size] for i in range(0, len(arr), chunk_size)]
+          full_transcript = ""
+          for chunk in audio_chunks:
+            input_feats = processor(chunk, sampling_rate=16000, return_tensors="pt").input_features.to(device).to(dtype)
+            with torch.inference_mode():
+              pred_ids = model.generate(input_feats, forced_decoder_ids=forced_decoder_ids)
+            chunk_text = processor.batch_decode(pred_ids, skip_special_tokens=True)[0]
+            full_transcript += " " + chunk_text
+          texts.append(full_transcript.strip())
+  
         t1 = time.time()
 
         # compute RTF
