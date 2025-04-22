@@ -107,6 +107,11 @@ def main():
             batch_size=args.batch_size,
             return_timestamps=args.timestamps if args.timestamps != "none" else False,
             torch_dtype=torch_dtype)
+      
+      gen_kwargs = {}
+      if getattr(model.generation_config, "is_multilingual", False):
+        gen_kwargs["language"] = "en"
+        gen_kwargs["task"] = "transcribe"
         
     with tqdm(total=3, desc="Loading Data") as bar:
         # Parallel audio loading with memory mapping
@@ -120,6 +125,9 @@ def main():
         # Prepare file paths
         audio_paths = [str(Path(x['audio']['path']).resolve()) for x in dataset]
         bar.update(1)    
+
+        # load all the audios once only
+        audio_arrays = [x['audio']['array'] for x in dataset]
 
         # Calculate total audio duration (manually from samples and rate)
         total_audio_duration = sum([len(x['audio']['array']) / x['audio']['sampling_rate'] for x in dataset])
@@ -143,14 +151,16 @@ def main():
             # Show current file being processed
             main_bar.set_postfix(file=os.path.basename(batch_paths[0]))
 
-            batch_audio_arrays = [x["array"] for x in batch["audio"]]
+            # Audio arrays
+            batch_audio_arrays = audio_arrays[i:i+args.batch_size]
 
             # Start batch timer
             batch_start_time = time.time()
 
             with torch.inference_mode():
               with torch.cuda.amp.autocast():
-                outputs = pipe(batch_audio_arrays)
+                outputs = pipe(batch_audio_arrays,**gen_kwargs)
+                
 
             # End batch timer
             batch_end_time = time.time()
