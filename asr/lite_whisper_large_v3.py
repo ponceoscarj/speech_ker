@@ -5,9 +5,9 @@ Example:
 python lite_whisper_large_v3.py --input_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
                 --output_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/output/lite_whisper_large_v3 \
                 --model /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/models/lite_whisper_large_v3 \
-                --chunk_lengths 30 \
-                --batch_sizes 1 \
-                --timestamp segment \
+                --chunk-lengths 30 \
+                --batch-sizes 1 \
+                --timestamp word \
                 --extensions .wav
 
 Notes:
@@ -18,11 +18,10 @@ Notes:
 import argparse
 import json
 import os
-import sys
 import torch
 from pathlib import Path
 from datetime import datetime
-from transformers import AutoModel, AutoProcessor, pipeline
+from transformers import AutoModel, AutoProcessor
 from datasets import load_dataset, Audio
 import jiwer
 import warnings
@@ -39,16 +38,11 @@ def real_time_factor(processingTime, audioLength, decimals=4):
     return round(processingTime / audioLength, decimals)
 
 def read_gold_transcription(audio_path):
-    audio_path = Path(audio_path).resolve()
-    txt_path = audio_path.with_suffix('.txt')
-    if txt_path.exists():
-        return txt_path.read_text().strip()
-    return None
+    txt_path = Path(audio_path).with_suffix('.txt')
+    return txt_path.read_text().strip() if txt_path.exists() else None
 
 def calculate_wer(reference, hypothesis):
     return jiwer.wer(reference, hypothesis)
-
-# REMOVED: Tee class and log file handling
 
 def main():
     parser = argparse.ArgumentParser(description="Transcribe an audio file.")
@@ -60,187 +54,124 @@ def main():
                         help="Local path to the ASR model")
     parser.add_argument("--output_filename", type=str, default="",
                         help="Custom base name for output JSON file (optional)")
-    parser.add_argument("--chunk_lengths", type=int, default=30,
+    parser.add_argument("--chunk-lengths", type=int, default=30,
                         help="Length of audio chunks in seconds")
-    parser.add_argument("--batch_sizes", type=int, default=1,
+    parser.add_argument("--batch-sizes", type=int, default=1,
                         help="Batch size for processing")
-    parser.add_argument("--timestamp", choices=["word", "segment", "none"], default="segment",
+    parser.add_argument("--timestamp", choices=["word", "char", "none"], default="word",
                         help="Type of timestamps to include")
     parser.add_argument("--extensions", nargs="+", default=[".wav", ".mp3", ".flac"],
                         help="Audio file extensions to process")
     parser.add_argument("--gold_standard", action="store_true", default=True,
                         help="Enable WER calculation using gold standard transcriptions")
     parser.add_argument("--sleep-time", type=int, default=0,
-                    help="Optional sleep time between batches (not used currently)")
-
+                        help="Optional sleep time between batches (not used currently)")
     args = parser.parse_args()
+
     os.makedirs(args.output_dir, exist_ok=True)
-
-    # REMOVED: Log directory creation and log file setup
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    torch_dtype = torch.float16 if "cuda" in device else torch.float32
+    dtype = torch.float16 if device.startswith("cuda") else torch.float32
 
-    with tqdm(total=3, desc="Loading Model") as bar:
-        # Load model
+    # ── Load model & processor ─────────────────────────────────────────────
+    with tqdm(total=2, desc="Loading Model") as bar:
         model = AutoModel.from_pretrained(
             args.model,
-            torch_dtype=torch_dtype,
+            trust_remote_code=True,
+            torch_dtype=dtype,
             device_map="auto",
-            trust_remote_code=True  # Allow custom modeling code
+            low_cpu_mem_usage=True
         )
         bar.update(1)
-      
-        if getattr(model.generation_config, "is_multilingual", False):
-            model.generation_config.language = "en"
-            model.generation_config.task = "transcribe"
 
         processor = AutoProcessor.from_pretrained("openai/whisper-large-v3")
         bar.update(1)
 
-        processor.feature_extractor.return_attention_mask = True
-
-        pipe = pipeline(
-            "automatic-speech-recognition",
-            model=model,
-            tokenizer=processor.tokenizer,
-            feature_extractor=processor.feature_extractor,
-            chunk_length_s=args.chunk_lengths,
-            batch_size=args.batch_sizes,
-            return_timestamps=args.timestamp if args.timestamp != "none" else False,
-            torch_dtype=torch_dtype
-        )
-    
-    with tqdm(total=3, desc="Loading Data") as bar:
-        # Parallel audio loading with memory mapping
-        dataset = load_dataset("audiofolder", data_dir=args.input_dir)["train"]
+    # ── Load audio dataset ─────────────────────────────────────────────────
+    with tqdm(total=2, desc="Loading Data") as bar:
+        ds = load_dataset("audiofolder", data_dir=args.input_dir)["train"]
         bar.update(1)
-        
-        # Resample to 16kHz in parallel
-        dataset = dataset.cast_column("audio", Audio(sampling_rate=16000))
+        ds = ds.cast_column("audio", Audio(sampling_rate=16000))
         bar.update(1)
 
-        # Prepare file paths
-        audio_paths = [str(Path(x['audio']['path']).resolve()) for x in dataset]
-        bar.update(1)
+    audio_paths = [x["audio"]["path"] for x in ds]
+    audio_arrays = [x["audio"]["array"] for x in ds]
+    total_audio_duration = sum(len(a)/16000 for a in audio_arrays)
+    total_files = len(audio_arrays)
 
-        audio_arrays = [x['audio']['array'] for x in dataset]
-
-        # Calculate total audio duration
-        total_audio_duration = sum([len(x['audio']['array']) / x['audio']['sampling_rate'] for x in dataset])
-
-    total_files = len(dataset)
+    # ── Transcription Loop ────────────────────────────────────────────────
     main_bar = tqdm(total=total_files, desc="Transcribing", unit="file")
-    wer_bar = tqdm(total=total_files, desc="WER_calculation", leave=False)
+    wer_bar = tqdm(total=total_files, desc="WER_Calc", leave=False)
+    results, batch_rtfs = [], []
+    total_wer, wer_count = 0, 0
+    start_all = time.time()
 
-    results = []
-    total_wer = 0
-    valid_wer_count = 0
-    start_time = time.time()
-    batch_rtf_list = []
+    for i in range(0, total_files, args.batch_sizes):
+        batch_arrs = audio_arrays[i:i+args.batch_sizes]
+        batch_paths = audio_paths[i:i+args.batch_sizes]
+        main_bar.set_postfix(file=Path(batch_paths[0]).name)
 
-    try:
-        for i in range(0, len(dataset), args.batch_sizes):
-            batch = dataset[i:i+args.batch_sizes]
-            batch_audio_arrays = audio_arrays[i:i+args.batch_sizes]
-            batch_paths = audio_paths[i:i+args.batch_sizes]
+        t0 = time.time()
+        # 1) preprocess
+        inputs = processor(
+            batch_arrs,
+            sampling_rate=16000,
+            return_tensors="pt",
+            padding=True
+        ).input_features.to(device).to(dtype)
+        # 2) generate
+        with torch.inference_mode():
+            pred_ids = model.generate(inputs)
+        # 3) decode
+        texts = processor.batch_decode(pred_ids, skip_special_tokens=True)
+        t1 = time.time()
 
-            main_bar.set_postfix(file=os.path.basename(batch_paths[0]))
+        # compute RTF
+        dur = sum(len(a)/16000 for a in batch_arrs)
+        rtf = real_time_factor(t1-t0, dur)
+        if rtf is not None:
+            batch_rtfs.append(rtf)
+        print(f"Batch {(i//args.batch_sizes)+1}: RTF={rtf:.4f}")
 
-            batch_start_time = time.time()
+        # collect results + WER
+        for path, text in zip(batch_paths, texts):
+            entry = {"audio_file_path": path, "pred_text": text}
+            if args.gold_standard:
+                gold = read_gold_transcription(path)
+                entry["text"] = gold or "N/A"
+                if gold:
+                    w = calculate_wer(gold, text)
+                    entry["wer"] = w
+                    total_wer += w; wer_count += 1
+                    wer_bar.update(1)
+            results.append(entry)
+            main_bar.update(1)
 
-            with torch.inference_mode():
-                with torch.cuda.amp.autocast():
-                    outputs = pipe(batch_audio_arrays)
+        if args.sleep_time>0:
+            time.sleep(args.sleep_time)
 
-            batch_end_time = time.time()
-            batch_processing_time = batch_end_time - batch_start_time
-            batch_audio_duration = sum([len(arr) / 16000 for arr in batch_audio_arrays])
+    main_bar.close(); wer_bar.close()
+    total_time = time.time() - start_all
 
-            batch_rtf = real_time_factor(batch_processing_time, batch_audio_duration)
-
-            if batch_rtf is not None:
-                print(f"Batch {i // args.batch_sizes + 1}: Processing Time = {batch_processing_time:.2f} sec, RTF = {batch_rtf:.4f}")
-                batch_rtf_list.append(batch_rtf)
-            else:
-                print(f"Batch {i // args.batch_sizes + 1}: Audio duration zero, cannot calculate RTF.")
-
-            for path, result in zip(batch_paths, outputs):
-                pred_text = result["text"] if isinstance(result, dict) else result
-                entry = {
-                    "audio_file_path": path,
-                    "pred_text": pred_text
-                }
-
-                if args.gold_standard:
-                    gold_text = read_gold_transcription(path)
-                    entry["text"] = gold_text or "N/A"
-                    
-                    if gold_text:
-                        wer = calculate_wer(entry["text"], entry["pred_text"])
-                        entry["wer"] = wer
-                        total_wer += wer
-                        valid_wer_count += 1
-                        wer_bar.update(1)
-                        wer_bar.set_postfix(current_wer=f"{wer:.2f}")
-
-                if args.gold_standard and gold_text:
-                    print(f'Processed {args.batch_sizes}. WER = {wer:.2f}')
-                else:
-                    print(f'Processed {args.batch_sizes}.')
-
-                results.append(entry)
-                main_bar.update(1)
-
-    finally:
-        main_bar.close()
-        wer_bar.close()
-
-    end_time = time.time()
-    processing_time = end_time - start_time
-
-    # ====================== Save Results ======================
-    rtf = real_time_factor(processing_time, total_audio_duration)
-    total_audio_minutes = total_audio_duration / 60
-
-    if args.output_filename:
-        results_file = os.path.join(args.output_dir, f"{args.output_filename}.json")
-        meta_file = os.path.join(args.output_dir, f"{args.output_filename}_meta.json")
-    else:
-        results_file = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}.json")
-        meta_file = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}_meta.json")
-
-    print('\nTranscription Script\n', 'input_dir', args.input_dir)
-    print('results_file', results_file, '\n')
+    # ── Save Outputs ───────────────────────────────────────────────────────
+    rtf_all = real_time_factor(total_time, total_audio_duration)
+    out_base = args.output_filename or f"results_{datetime.now().isoformat()}"
+    results_file = os.path.join(args.output_dir, f"{out_base}.json")
+    meta_file    = os.path.join(args.output_dir, f"{out_base}_meta.json")
 
     with open(results_file, "w") as f:
-        for entry in results:
-            f.write(json.dumps(entry) + "\n")
-
-    meta = {
-        "processing_time_seconds": processing_time,
-        "total_audio_duration_seconds": total_audio_duration,
-        "real_time_factor": rtf,
-        "batch_rtf_list": batch_rtf_list
-    }
+        for e in results:
+            f.write(json.dumps(e) + "\n")
     with open(meta_file, "w") as f:
-        json.dump(meta, f, indent=2)
+        json.dump({
+            "processing_time_s": total_time,
+            "audio_duration_s": total_audio_duration,
+            "real_time_factor": rtf_all,
+            "batch_rtfs": batch_rtfs
+        }, f, indent=2)
 
-    print(f"Transcriptions saved to {results_file}")
-    print(f"Run metadata saved to   {meta_file}")
-    print(f"Total Processing Time: {processing_time:.2f} seconds")
-    print(f"Total Audio Duration: {total_audio_minutes:.2f} minutes")
-
-    if rtf is not None:
-        print(f"\nReal-Time Factor (RTF): {rtf}")
-    else:
-        print("\nWarning: Total audio duration is zero, cannot calculate RTF.")
-
-    if args.gold_standard and valid_wer_count > 0:
-        print(f"\nAverage WER: {total_wer/valid_wer_count:.2f}")
-    print(f"\nProcessing complete. Results saved to {results_file}")
+    print(f"\nResults → {results_file}")
+    print(f"Metadata → {meta_file}")
+    print(f"Total Time: {total_time:.2f}s  Audio: {total_audio_duration/60:.2f}m  RTF: {rtf_all:.4f}")
 
 if __name__ == "__main__":
     main()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        print("\n[INFO] GPU cache cleared successfully.")
