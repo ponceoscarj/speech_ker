@@ -22,7 +22,7 @@ import sys
 import torch
 from pathlib import Path
 from datetime import datetime
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+from transformers import AutoModel, AutoProcessor, pipeline
 from datasets import load_dataset, Audio
 import jiwer
 import warnings
@@ -82,12 +82,10 @@ def main():
 
     with tqdm(total=3, desc="Loading Model") as bar:
         # Load model
-        model = AutoModelForSpeechSeq2Seq.from_pretrained(
+        model = AutoModel.from_pretrained(
             args.model,
             torch_dtype=torch_dtype,
             device_map="auto",
-            attn_implementation="flash_attention_2",
-            low_cpu_mem_usage=True,
             trust_remote_code=True  # Allow custom modeling code
         )
         bar.update(1)
@@ -96,7 +94,7 @@ def main():
             model.generation_config.language = "en"
             model.generation_config.task = "transcribe"
 
-        processor = AutoProcessor.from_pretrained(args.model)
+        processor = AutoProcessor.from_pretrained("openai/whisper-large-v3")
         bar.update(1)
 
         processor.feature_extractor.return_attention_mask = True
