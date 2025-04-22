@@ -120,7 +120,9 @@ def main():
         ).input_features.to(device).to(dtype)
         # 2) generate
         with torch.inference_mode():
-            pred_ids = model.generate(inputs)
+          forced_ids = processor.get_decoder_prompt_ids(language="en", task="transcribe")
+          pred_ids   = model.generate(inputs, forced_decoder_ids=forced_ids)
+  
         # 3) decode
         texts = processor.batch_decode(pred_ids, skip_special_tokens=True)
         t1 = time.time()
