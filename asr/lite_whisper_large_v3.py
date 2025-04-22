@@ -116,10 +116,12 @@ def main():
         t0 = time.time()
         inputs = processor(batch_arrs, sampling_rate=16000, return_tensors="pt", padding=True).input_features
         inputs = inputs.to(device).to(dtype)
-        with torch.inference_mode():
+        
+      with torch.inference_mode():
           pred_ids = model.generate(inputs, forced_decoder_ids=forced_decoder_ids)
 
         texts = processor.batch_decode(pred_ids, skip_special_tokens=True)
+        t1 = time.time()
 
         # compute RTF
         dur = sum(len(a)/16000 for a in batch_arrs)
