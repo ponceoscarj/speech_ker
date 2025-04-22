@@ -5,9 +5,9 @@ Example:
 python lite_whisper_large_v3.py --input_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
                 --output_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/output/lite_whisper_large_v3 \
                 --model /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/models/lite_whisper_large_v3 \
-                --chunk_length 30 \
-                --batch_size 1 \
-                --timestamps segment \
+                --chunk_lengths 30 \
+                --batch_sizes 1 \
+                --timestamp segment \
                 --extensions .wav
 
 Notes:
@@ -107,7 +107,7 @@ def main():
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
             chunk_length_s=args.chunk_lengths,
-            batch_size=args.batch_sizes,
+            batch_sizes=args.batch_sizes,
             return_timestamps=args.timestamp if args.timestamp != "none" else False,
             torch_dtype=torch_dtype
         )
@@ -141,10 +141,10 @@ def main():
     batch_rtf_list = []
 
     try:
-        for i in range(0, len(dataset), args.batch_size):
-            batch = dataset[i:i+args.batch_size]
-            batch_audio_arrays = audio_arrays[i:i+args.batch_size]
-            batch_paths = audio_paths[i:i+args.batch_size]
+        for i in range(0, len(dataset), args.batch_sizes):
+            batch = dataset[i:i+args.batch_sizes]
+            batch_audio_arrays = audio_arrays[i:i+args.batch_sizes]
+            batch_paths = audio_paths[i:i+args.batch_sizes]
 
             main_bar.set_postfix(file=os.path.basename(batch_paths[0]))
 
@@ -161,10 +161,10 @@ def main():
             batch_rtf = real_time_factor(batch_processing_time, batch_audio_duration)
 
             if batch_rtf is not None:
-                print(f"Batch {i // args.batch_size + 1}: Processing Time = {batch_processing_time:.2f} sec, RTF = {batch_rtf:.4f}")
+                print(f"Batch {i // args.batch_sizes + 1}: Processing Time = {batch_processing_time:.2f} sec, RTF = {batch_rtf:.4f}")
                 batch_rtf_list.append(batch_rtf)
             else:
-                print(f"Batch {i // args.batch_size + 1}: Audio duration zero, cannot calculate RTF.")
+                print(f"Batch {i // args.batch_sizes + 1}: Audio duration zero, cannot calculate RTF.")
 
             for path, result in zip(batch_paths, outputs):
                 pred_text = result["text"] if isinstance(result, dict) else result
@@ -186,9 +186,9 @@ def main():
                         wer_bar.set_postfix(current_wer=f"{wer:.2f}")
 
                 if args.gold_standard and gold_text:
-                    print(f'Processed {args.batch_size}. WER = {wer:.2f}')
+                    print(f'Processed {args.batch_sizes}. WER = {wer:.2f}')
                 else:
-                    print(f'Processed {args.batch_size}.')
+                    print(f'Processed {args.batch_sizes}.')
 
                 results.append(entry)
                 main_bar.update(1)
