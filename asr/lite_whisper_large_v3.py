@@ -107,7 +107,7 @@ def main():
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
             chunk_length_s=args.chunk_lengths,
-            batch_sizes=args.batch_sizes,
+            batch_size=args.batch_sizes,
             return_timestamps=args.timestamp if args.timestamp != "none" else False,
             torch_dtype=torch_dtype
         )
