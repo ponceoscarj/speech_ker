@@ -24,7 +24,7 @@ import sys
 import torch
 from pathlib import Path
 from datetime import datetime
-from transformers import AutoModel, AutoProcessor, pipeline
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 from datasets import load_dataset, Audio
 import jiwer
 import warnings
@@ -83,18 +83,19 @@ def main():
 
     with tqdm(total=3, desc="Loading Model") as bar:
         # Flash Attention 2 for 3-5x speedup
-        model = AutoModel.from_pretrained(
+        model = AutoModelForSpeechSeq2Seq.from_pretrained(
             args.model,
-            trust_remote_code=True,
             torch_dtype=torch_dtype,
+            use_flash_attention_2=True,
             device_map="auto",
+            attn_implementation="flash_attention_2",
             low_cpu_mem_usage=True
         )
         bar.update(1)
       
-        if getattr(model.generation_config, "is_multilingual", False):
-          model.generation_config.language = "en"
-          model.generation_config.task = "transcribe"
+        # if getattr(model.generation_config, "is_multilingual", False):
+        model.generation_config.language = "en"
+        model.generation_config.task = "transcribe"
 
         model = torch.compile(model)
         processor = AutoProcessor.from_pretrained(args.model)
