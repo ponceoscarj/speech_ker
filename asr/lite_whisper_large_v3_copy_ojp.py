@@ -19,6 +19,8 @@ In --output_dir insert the correct model, be as specific as possible (e.g., cana
 import librosa 
 import torch
 from transformers import AutoProcessor, AutoModel, pipeline
+from transformers.pipelines.automatic_speech_recognition import chunk_iter
+from tqdm import tqdm
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 dtype = torch.float16 if "cuda" in device else torch.float32
@@ -34,23 +36,42 @@ model = AutoModel.from_pretrained(
 processor = AutoProcessor.from_pretrained("openai/whisper-large-v3")
 
 # Create ASR pipeline for chunk processing (no generation)
-asr_pipe = pipeline(
-    "automatic-speech-recognition",
-    model=model,
-    tokenizer=processor.tokenizer,
-    feature_extractor=processor.feature_extractor,
-    chunk_length_s=30,        # 30-second chunks
-    # stride_length_s=[6, 4],   # [chunk_stride, label_stride]
-    device=device,
-    torch_dtype=dtype,
-)
+# asr_pipe = pipeline(
+#     "automatic-speech-recognition",
+#     model=model,
+#     tokenizer=processor.tokenizer,
+#     feature_extractor=processor.feature_extractor,
+#     chunk_length_s=30,        # 30-second chunks
+#     # stride_length_s=[6, 4],   # [chunk_stride, label_stride]
+#     device=device,
+#     torch_dtype=dtype,
+# )
+
+
 
 # Load audio file
 path = "path/to/audio.wav"
 audio, sr = librosa.load(path, sr=16000)
 
 # Process audio in chunks using pipeline's preprocessing
-chunks = asr_pipe.preprocess(audio)
+# chunks = asr_pipe.preprocess(audio)
+sr = processor.feature_extractor.sampling_rate
+
+# align_to = model.config.inputs_to_logits_ratio
+chunk_len = int(30 * sr)
+stride  = int(5  * sr)  # default overlap = 30/6 = 5 s
+
+chunks = list(chunk_iter(
+    audio, 
+    processor.feature_extractor, 
+    chunk_len, 
+    stride, 
+    stride,
+    dtype=torch.float32
+))
+
+
+
 
 transcriptions = []
 for chunk in tqdm(chunks, desc="Processing chunks"):
