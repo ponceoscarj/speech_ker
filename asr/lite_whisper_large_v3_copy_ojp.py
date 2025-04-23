@@ -5,11 +5,11 @@ Modification of https://github.com/nyrahealth/CrisperWhisper/blob/main/transcrib
 Example:
 python crisperwhisper.py --input_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
                 --output_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/output/CrisperWhisper \
-                --model /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/models/CrisperWhisper \
+                --main_model /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/models/CrisperWhisper \
+                --processor_model /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/models/whisper-large-v3 \
                 --chunk_length 30 \
                 --batch_size 1 \
                 --timestamps none \
-                --
                 --extensions .wav
 
 
@@ -58,8 +58,11 @@ def main():
                        help="Directory containing audio files")
     parser.add_argument("--output_dir", type=str, default="transcripts",
                        help="Output directory for transcriptions")
-    parser.add_argument("--model", type=str, default="nyrahealth/CrisperWhisper",
+    parser.add_argument("--main_model", type=str,
                        help="ASR model identifier from Hugging Face Hub or local path")
+    parser.add_argument("--processor_model", type=str, 
+                       help="ASR model identifier from Hugging Face Hub or local path")
+
     parser.add_argument("--output_filename", type=str, default="",
                        help="Custom base name for output JSON file (optional)")    
     parser.add_argument("--chunk_length", type=int, default=30,
@@ -84,7 +87,7 @@ def main():
     with tqdm(total=3, desc="Loading Model") as bar:
         # Flash Attention 2 for 3-5x speedup
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            args.model,
+            args.main_model,
             torch_dtype=torch_dtype,
             use_flash_attention_2=True,
             device_map="auto",
@@ -98,7 +101,7 @@ def main():
         model.generation_config.task = "transcribe"
 
         model = torch.compile(model)
-        processor = AutoProcessor.from_pretrained(args.model)
+        processor = AutoProcessor.from_pretrained(args.processor_model)
         bar.update(1)
 
         processor.feature_extractor.return_attention_mask = True
