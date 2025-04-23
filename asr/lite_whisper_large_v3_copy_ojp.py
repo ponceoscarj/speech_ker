@@ -18,7 +18,7 @@ In --output_dir insert the correct model, be as specific as possible (e.g., cana
 '''
 import librosa 
 import torch
-from transformers import AutoProcessor, AutoModel, pipeline
+from transformers import AutoProcessor, AutoModel, pipeline, AutoModelForSpeechSeq2Seq
 from transformers.pipelines.automatic_speech_recognition import chunk_iter
 from transformers.pipelines.automatic_speech_recognition import AutomaticSpeechRecognitionPipeline
 from tqdm import tqdm
@@ -27,7 +27,7 @@ device = "cuda:0" if torch.cuda.is_available() else "cpu"
 dtype = torch.float16 if "cuda" in device else torch.float32
 
 # Load the compressed Whisper model
-model = AutoModel.from_pretrained(
+model = AutoModelForSpeechSeq2Seq.from_pretrained(
     "/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/lite-whisper-large-v3", 
     trust_remote_code=True,
     torch_dtype=dtype
