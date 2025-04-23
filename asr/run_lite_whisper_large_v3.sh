@@ -37,7 +37,8 @@ readonly DEFAULT_SLEEP=2
 # ==============================================================================
 # Initialize variables with default values
 # ==============================================================================
-model=""
+main_model=""
+processor_model=""
 input_dir=""
 output_base_dir="$DEFAULT_OUTPUT"
 chunk_lengths=("${DEFAULT_CHUNKS[@]}")
@@ -54,7 +55,8 @@ show_help() {
 Usage: $0 [options]
 
 Mandatory Parameters:
-  -m, --model MODEL                 Path to model directory or Hugging Face model name
+  -m, --main_model MODEL            Path to model directory or Hugging Face model name
+  -p, --processor_model MODEL       Path to model processor
   -i, --input-dir INPUT_DIR         Directory containing audio files
 
 Optional Parameters:
@@ -229,7 +231,8 @@ run_experiment() {
             --input_dir "${input_dir}" \
             --output_dir "${experiment_dir}" \
             --output_filename "${output_filename}" \
-            --model "${model}" \
+            --main_model "${main_model}" \
+            --processor_model "${processor_model}" \
             --chunk-lengths "${chunk_len}" \
             --batch-sizes "${batch_size}" \
             --timestamp "${timestamp}" \
