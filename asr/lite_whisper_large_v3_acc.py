@@ -28,7 +28,7 @@ import jiwer
 import warnings
 from tqdm import tqdm
 import time
-from transformers import pipeline
+
 
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
