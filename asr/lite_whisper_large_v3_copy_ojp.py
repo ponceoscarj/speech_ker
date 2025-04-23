@@ -81,7 +81,7 @@ for chunk in tqdm(chunks, desc="Processing chunks"):
     print('outputs', outputs)
     tokens_cpu = outputs.cpu().detach()
 
-    model_outputs.append({"tokens": outputs, "stride": chunk["stride"]})
+    model_outputs.append({"tokens": tokens_cpu, "stride": chunk["stride"]})
 
 final = post_pipe.postprocess(model_outputs)
 
