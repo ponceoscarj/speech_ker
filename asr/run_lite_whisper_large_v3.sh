@@ -116,8 +116,8 @@ validate_timestamp() {
 # ==============================================================================
 parse_parameters() {
     local parsed_args
-    parsed_args=$(getopt -o m:i:o:c:b:t:e:s:h \
-                --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
+    parsed_args=$(getopt -o m:p:i:o:c:b:t:e:s:h \
+                --long main_model:,processor_model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
                 -n "$0" -- "$@") || { show_help; exit 1; }
     # parsed_args=$(/usr/local/opt/gnu-getopt/bin/getopt \
     # -o m:i:o:c:b:t:e:s:h \
@@ -128,7 +128,10 @@ parse_parameters() {
 
     while true; do
         case "$1" in
-            -m|--model)
+            -m|--main_model)
+                model="$2"
+                shift 2 ;;
+            -p|--processor_model)
                 model="$2"
                 shift 2 ;;
             -i|--input-dir)
@@ -164,7 +167,7 @@ parse_parameters() {
     done
 
     # Validate mandatory parameters
-    [[ -z "${model}" ]] && { echo "ERROR: Missing --model"; exit 1; }
+    [[ -z "${main_model}" ]] && { echo "ERROR: Missing --model"; exit 1; }
     [[ -z "${input_dir}" ]] && { echo "ERROR: Missing --input-dir"; exit 1; }
 }
 
