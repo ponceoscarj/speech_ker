@@ -222,14 +222,11 @@ huggingface-cli download nyrahealth/CrisperWhisper --local-dir [SAVE_DIR]
 
 ---
 1. Create environment with Python 3.10 (you can use the existing `nemo` conda environment):
-```bash
-conda activate nemo
-```
 2. Install required dependencies:
 ```bash
 pip install torch torchaudio transformers librosa numpy
 ```
-3.Login to HuggingFace and download model files
+3. Login to HuggingFace and download model files
 - Login into huggingface and introduce your token. 
 ```bash
 huggingface-cli login
