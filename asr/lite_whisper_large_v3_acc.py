@@ -1,5 +1,5 @@
 """
-Modification of https://github.com/ponceoscarj/speech_ker/blob/main/asr/crisperwhisper_opt.py
+Modification of https://github.com/ponceoscarj/speech_ker/blob/main/asr/lit_whisper_large_v3.py
 
 Example:
 python lite_whisper_large_v3.py --input_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
