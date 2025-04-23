@@ -208,3 +208,42 @@ huggingface-cli download nyrahealth/CrisperWhisper --local-dir [SAVE_DIR]
 *`[SAVE_DIR]` is your target directory. Inside asr/models. Example: ./asr/models/CrisperWhisper*
 
 6. Run the model by using the python script `crisperwhisper.py`
+
+# Lite-Whisper
+
+
+## Instructions
+
+### Notes:
+- **Partitioning**: Uses **hard segmentation** (no overlap/stride).
+- **FlashAttention is NOT required** for this model.
+- The main model is hosted at [`efficient-speech/lite-whisper-large-v3`](https://huggingface.co/efficient-speech/lite-whisper-large-v3).
+- The processor must be downloaded from [`openai/whisper-large-v3`](https://huggingface.co/openai/whisper-large-v3).
+
+---
+1. Create environment with Python 3.10 (you can use the existing `nemo` conda environment):
+```bash
+conda activate nemo
+```
+2. Install required dependencies:
+```bash
+pip install torch torchaudio transformers librosa numpy
+```
+3.Login to HuggingFace and download model files
+- Login into huggingface and introduce your token. 
+```bash
+huggingface-cli login
+```
+- Download the main model:
+```bash
+huggingface-cli download efficient-speech/lite-whisper-large-v3 --local-dir [SAVE_DIR]
+```
+- Downlaod the processor model:
+```bash
+huggingface-cli download openai/whisper-large-v3 --local-dir [SAVE_DIR]
+```
+*`[SAVE_DIR]` is your target directory. Inside asr/models. Example: ./asr/models/lite_whisper_large_v3*
+
+4. Run the model by using the python script `lite_whisper_large_v3.py`
+
+
