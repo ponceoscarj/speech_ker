@@ -159,6 +159,10 @@ def main():
 
     main_bar.close(); wer_bar.close()
     total_time = time.time() - start_all
+  
+    if args.gold_standard and wer_count > 0:
+        avg_wer = total_wer / wer_count
+        print(f"\nAverage WER over {wer_count} files: {avg_wer:.4f}\n")
 
     # ── Save Outputs ───────────────────────────────────────────────────────
     rtf_all = real_time_factor(total_time, total_audio_duration)
