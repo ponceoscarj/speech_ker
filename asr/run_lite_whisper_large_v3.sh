@@ -176,8 +176,8 @@ parse_parameters() {
 # ==============================================================================
 create_experiment_dir() {
 
-    model="${model%/}"  # Remove trailing slash (if present)
-    local model_dir_name=$(basename "${model}")  # Extract only the directory name    
+    model="${main_model%/}"  # Remove trailing slash (if present)
+    local model_dir_name=$(basename "${main_model}")  # Extract only the directory name    
     local experiment_dir="${output_base_dir}/${model_dir_name}"
     
     mkdir -p "${experiment_dir}" || {
@@ -192,7 +192,7 @@ initialize_log_file() {
     cat <<EOF > "${log_path}"
 === Experiment Parameters ===
 Start Time:    $(date +'%Y-%m-%d %H:%M:%S')
-Model:         ${model}
+Model:         ${main_model}
 Input Dir:     ${input_dir}
 Chunk Lengths: "${chunk_lengths[*]}"
 Batch Sizes:   "${batch_sizes[*]}"
@@ -269,7 +269,7 @@ main() {
     local total_configs=$((${#batch_sizes[@]} * ${#chunk_lengths[@]}))
     
     echo -e "\n=== Starting Experiment Series ==="
-    echo "Model:          ${model}"
+    echo "Model:          ${main_model}"
     echo "Input Directory: ${input_dir}"
     echo "Output Directory: ${experiment_dir}"
     echo "Timestamp Type: ${timestamp}"
