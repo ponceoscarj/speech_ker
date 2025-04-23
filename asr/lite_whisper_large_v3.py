@@ -85,7 +85,8 @@ def main():
             low_cpu_mem_usage=True
         )
         bar.update(1)
-        processor = AutoProcessor.from_pretrained("openai/whisper-large-v3")
+        processor = AutoProcessor.from_pretrained(args.processor_model)
+      
        # ── HERE ── get the special decoder prompt for Whisper
         forced_decoder_ids = processor.get_decoder_prompt_ids(language="en", task="transcribe")
         bar.update(1)
