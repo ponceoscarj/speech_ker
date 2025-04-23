@@ -9,7 +9,6 @@ python crisperwhisper.py --input_dir /Users/oscarponce/Documents/PythonProjects/
                 --processor_model /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/models/whisper-large-v3 \
                 --chunk_length 30 \
                 --batch_size 1 \
-                --timestamps none \
                 --extensions .wav
 
 
@@ -69,8 +68,8 @@ def main():
                      help="Length of audio chunks in seconds")
     parser.add_argument("--batch_size", type=int, default=1,
                      help="Batch size for processing")
-    parser.add_argument("--timestamps", choices=["word", "segment", "none"], default="word",
-                     help="Type of timestamps to include")
+    # parser.add_argument("--timestamps", choices=["word", "segment", "none"], default="word",
+    #                  help="Type of timestamps to include")
     parser.add_argument("--extensions", nargs="+", default=[".wav", ".mp3", ".flac"],
                      help="Audio file extensions to process")
     parser.add_argument("--gold_standard", action="store_true",default=True,
@@ -92,6 +91,7 @@ def main():
             use_flash_attention_2=True,
             device_map="auto",
             attn_implementation="flash_attention_2",
+            trust_remote_code=True,
             low_cpu_mem_usage=True
         )
         bar.update(1)
@@ -113,7 +113,7 @@ def main():
             feature_extractor=processor.feature_extractor,
             chunk_length_s=args.chunk_length,
             batch_size=args.batch_size,
-            return_timestamps=args.timestamps if args.timestamps != "none" else False,
+            #return_timestamps has a different config for whisper-large-v3
             torch_dtype=torch_dtype)
       
         
