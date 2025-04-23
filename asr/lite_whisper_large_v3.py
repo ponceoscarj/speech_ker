@@ -51,8 +51,10 @@ def main():
                         help="Directory containing audio files")
     parser.add_argument("--output_dir", type=str, default="transcripts",
                         help="Output directory for transcriptions")
-    parser.add_argument("--model", type=str, required=True,
+    parser.add_argument("--main_model", type=str, required=True,
                         help="Local path to the ASR model")
+    parser.add_argument("--processor_model", type=str, default="openai/whisper-large-v3",
+                        help="Local path for the Whisper processor")
     parser.add_argument("--output_filename", type=str, default="",
                         help="Custom base name for output JSON file (optional)")
     parser.add_argument("--chunk-lengths", type=int, default=30,
@@ -76,7 +78,7 @@ def main():
     # ── Load model & processor ─────────────────────────────────────────────
     with tqdm(total=2, desc="Loading Model") as bar:
         model = AutoModel.from_pretrained(
-            args.model,
+            args.main_model,
             trust_remote_code=True,
             torch_dtype=dtype,
             device_map="auto",
