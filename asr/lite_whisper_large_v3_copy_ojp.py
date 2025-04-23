@@ -53,7 +53,7 @@ audio, sr = librosa.load(path, sr=16000)
 sr = processor.feature_extractor.sampling_rate
 
 # align_to = model.config.inputs_to_logits_ratio
-align_to     = model.config.inputs_to_logits_ratio
+align_to = getattr(model.config, "inputs_to_logits_ratio", 1)
 chunk_len    = int(round(30 * sr / align_to) * align_to)
 stride_left  = int(round( 5 * sr / align_to) * align_to)
 stride_right = int(round( 5 * sr / align_to) * align_to)
