@@ -51,6 +51,7 @@ conda activate nemo
 
 ```bash
 # The CUDA version of the sandbox-AI is 12.4
+# you can check cuda version with nvidia-smi
 pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 ```
 
