@@ -50,12 +50,13 @@ conda activate nemo
 2. Install latest torch - check your CUDA version [here](https://pytorch.org/get-started/locally/)
 
 ```bash
-pip install torch torchvision torchaudio
+# The CUDA version of the sandbox-AI is 12.4
+pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 ```
 
 3. Install NeMo important dependencies
 ```bash
-apt-get update && apt-get install -y libsndfile1 ffmpeg
+sudo apt-get update && sudo apt-get install -y libsndfile1 ffmpeg
 pip install Cython packaging
 ```
 
