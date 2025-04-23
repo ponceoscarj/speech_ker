@@ -53,15 +53,17 @@ audio, sr = librosa.load(path, sr=16000)
 sr = processor.feature_extractor.sampling_rate
 
 # align_to = model.config.inputs_to_logits_ratio
-chunk_len = int(30 * sr)
-stride  = int(5  * sr)  # default overlap = 30/6 = 5 s
+align_to     = model.config.inputs_to_logits_ratio
+chunk_len    = int(round(30 * sr / align_to) * align_to)
+stride_left  = int(round( 5 * sr / align_to) * align_to)
+stride_right = int(round( 5 * sr / align_to) * align_to)
 
 chunks = list(chunk_iter(
     audio, 
     processor.feature_extractor, 
     chunk_len, 
-    stride, 
-    stride,
+    stride_left, 
+    stride_right,
     dtype=torch.float32
 ))
 
@@ -70,12 +72,15 @@ chunks = list(chunk_iter(
 
 model_outputs = []
 for chunk in tqdm(chunks, desc="Processing chunks"):
+    print('\n', chunk)
     # Extract and prepare inputs
     outputs = model.generate(
-    input_features=chunk["input_features"].to(device).to(dtype),
-    forced_decoder_ids=processor.get_decoder_prompt_ids(language="en", task="transcribe"),
-    max_new_tokens=448
-)
+                    input_features=chunk["input_features"].to(device).to(dtype),
+                    forced_decoder_ids=processor.get_decoder_prompt_ids(language="en", task="transcribe"),
+                    max_new_tokens=444)
+    print('outputs', outputs)
+    tokens_cpu = outputs.cpu().detach()
+
     model_outputs.append({"tokens": outputs, "stride": chunk["stride"]})
 
 final = post_pipe.postprocess(model_outputs)
