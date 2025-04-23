@@ -129,10 +129,10 @@ parse_parameters() {
     while true; do
         case "$1" in
             -m|--main_model)
-                model="$2"
+                main_model="$2"
                 shift 2 ;;
             -p|--processor_model)
-                model="$2"
+                processor_model="$2"
                 shift 2 ;;
             -i|--input-dir)
                 input_dir="$(realpath "$2")"  # Use realpath for absolute paths
@@ -167,7 +167,7 @@ parse_parameters() {
     done
 
     # Validate mandatory parameters
-    [[ -z "${main_model}" ]] && { echo "ERROR: Missing --model"; exit 1; }
+    [[ -z "${main_model}" ]] && { echo "ERROR: Missing --main_model"; exit 1; }
     [[ -z "${input_dir}" ]] && { echo "ERROR: Missing --input-dir"; exit 1; }
 }
 
