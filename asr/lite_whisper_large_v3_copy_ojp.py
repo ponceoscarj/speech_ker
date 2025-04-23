@@ -20,6 +20,7 @@ import librosa
 import torch
 from transformers import AutoProcessor, AutoModel, pipeline
 from transformers.pipelines.automatic_speech_recognition import chunk_iter
+from transformers.pipelines.automatic_speech_recognition import AutomaticSpeechRecognitionPipeline
 from tqdm import tqdm
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -27,30 +28,24 @@ dtype = torch.float16 if "cuda" in device else torch.float32
 
 # Load the compressed Whisper model
 model = AutoModel.from_pretrained(
-    "efficient-speech/lite-whisper-large-v3-turbo", 
+    "/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/lite-whisper-large-v3", 
     trust_remote_code=True,
     torch_dtype=dtype
 ).to(device)
 
 # Use the same processor as the original model
-processor = AutoProcessor.from_pretrained("openai/whisper-large-v3")
+processor = AutoProcessor.from_pretrained("/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/whisper-large-v3")
 
 # Create ASR pipeline for chunk processing (no generation)
-# asr_pipe = pipeline(
-#     "automatic-speech-recognition",
-#     model=model,
-#     tokenizer=processor.tokenizer,
-#     feature_extractor=processor.feature_extractor,
-#     chunk_length_s=30,        # 30-second chunks
-#     # stride_length_s=[6, 4],   # [chunk_stride, label_stride]
-#     device=device,
-#     torch_dtype=dtype,
-# )
+post_pipe = AutomaticSpeechRecognitionPipeline(
+    model=model,
+    tokenizer=processor.tokenizer,
+    feature_extractor=processor.feature_extractor)
 
 
 
 # Load audio file
-path = "path/to/audio.wav"
+path = "/home/ext_ponceponte_oscar_mayo_edu/speech_ker/audio_files/audio_valid/afap024.wav"
 audio, sr = librosa.load(path, sr=16000)
 
 # Process audio in chunks using pipeline's preprocessing
@@ -73,38 +68,17 @@ chunks = list(chunk_iter(
 
 
 
-transcriptions = []
+model_outputs = []
 for chunk in tqdm(chunks, desc="Processing chunks"):
     # Extract and prepare inputs
-    inputs = {
-        "input_features": chunk["input_features"].to(device).to(dtype),
-        "decoder_input_ids": torch.tensor(
-            [[model.config.decoder_start_token_id]],
-            device=device
-        )
-    }
-    
-    # Generate with forced decoder prompts
-    predicted_ids = model.generate(
-        **inputs,
-        forced_decoder_ids=processor.get_decoder_prompt_ids(
-            language="en", 
-            task="transcribe"
-        ),
-        max_new_tokens=448,
-        num_beams=1,
-        do_sample=False
-    )
-    
-    # Decode and clean text
-    text = processor.batch_decode(
-        predicted_ids, 
-        skip_special_tokens=True
-    )[0].strip()
-    
-    transcriptions.append(text)
+    outputs = model.generate(
+    input_features=chunk["input_features"].to(device).to(dtype),
+    forced_decoder_ids=processor.get_decoder_prompt_ids(language="en", task="transcribe"),
+    max_new_tokens=448
+)
+    model_outputs.append({"tokens": outputs, "stride": chunk["stride"]})
+
+final = post_pipe.postprocess(model_outputs)
 
 # Combine chunks with overlap handling
-full_transcription = " ".join(transcriptions)
-print("Final Transcription:")
-print(full_transcription)
+print(final["text"])
