@@ -39,6 +39,14 @@ Brief description of the models from NVIDIA NeMo.
 |------------------------------|------------------|---------------|-----------------|-----------------------|
 | `nvidia/parakeet-tdt_ctc-110m` | FastConformer   | Hybrid TDT-CTC | ASRModel?       | `nemo_buffered_infer_rnnt` |
 
+## Model Characteristics
+These Whisper-compatible models are optimized for efficient, hard-segmented (no overlap/stride) transcription. FlashAttention is **not** required.
+
+| Model Name                                  | Processor Model               | Description                         | Script Name                          |
+|---------------------------------------------|-------------------------------|-------------------------------------|--------------------------------------|
+| `efficient-speech/lite-whisper-large-v3`    | `openai/whisper-large-v3`     | Base lightweight Whisper variant    | `lite_whisper_large_v3.py`           |
+| `efficient-speech/lite-whisper-large-v3-acc`| `openai/whisper-large-v3`     | Accuracy-tuned variant              | `lite_whisper_large_v3_acc.py`       |
+
 
 ## Requirements
 1. Create conda environment with python 3.10.12 - more stable
@@ -48,7 +56,6 @@ conda activate nemo
 ```
 
 2. Install latest torch - check your CUDA version [here](https://pytorch.org/get-started/locally/)
-
 ```bash
 # The CUDA version of the sandbox-AI is 12.4
 # you can check cuda version with nvidia-smi
