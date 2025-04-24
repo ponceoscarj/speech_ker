@@ -39,14 +39,6 @@ Brief description of the models from NVIDIA NeMo.
 |------------------------------|------------------|---------------|-----------------|-----------------------|
 | `nvidia/parakeet-tdt_ctc-110m` | FastConformer   | Hybrid TDT-CTC | ASRModel?       | `nemo_buffered_infer_rnnt` |
 
-## Model Characteristics
-These Whisper-compatible models are optimized for efficient, hard-segmented (no overlap/stride) transcription. FlashAttention is **not** required.
-
-| Model Name                                  | Processor Model               | Description                         | Script Name                          |
-|---------------------------------------------|-------------------------------|-------------------------------------|--------------------------------------|
-| `efficient-speech/lite-whisper-large-v3`    | `openai/whisper-large-v3`     | Base lightweight Whisper variant    | `lite_whisper_large_v3.py`           |
-| `efficient-speech/lite-whisper-large-v3-acc`| `openai/whisper-large-v3`     | Accuracy-tuned variant              | `lite_whisper_large_v3_acc.py`       |
-
 
 ## Requirements
 1. Create conda environment with python 3.10.12 - more stable
@@ -220,14 +212,19 @@ huggingface-cli download nyrahealth/CrisperWhisper --local-dir [SAVE_DIR]
 
 # Lite-Whisper
 
-
-## Instructions
-
 ### Notes:
 - **Partitioning**: Uses **hard segmentation** (no overlap/stride).
 - **FlashAttention is NOT required** for this model.
-- The main model is hosted at [`efficient-speech/lite-whisper-large-v3`](https://huggingface.co/efficient-speech/lite-whisper-large-v3).
 - The processor must be downloaded from [`openai/whisper-large-v3`](https://huggingface.co/openai/whisper-large-v3).
+
+
+| Model Name                                  | Processor Model               | Description                         | Python Script Name                          |
+|---------------------------------------------|-------------------------------|-------------------------------------|--------------------------------------|
+| `efficient-speech/lite-whisper-large-v3`    | `openai/whisper-large-v3`     | Base lightweight Whisper variant    | `lite_whisper_large_v3.py`           |
+| `efficient-speech/lite-whisper-large-v3-acc`| `openai/whisper-large-v3`     | Accuracy-tuned variant              | `lite_whisper_large_v3_acc.py`       |
+
+
+## Instructions
 
 ---
 1. Create environment with Python 3.10 (you can use the existing `nemo` conda environment):
@@ -242,7 +239,8 @@ huggingface-cli login
 ```
 - Download the main model:
 ```bash
-huggingface-cli download efficient-speech/lite-whisper-large-v3 --local-dir [SAVE_DIR]
+huggingface-cli download efficient-speech/lite-whisper-large-v3  --local-dir [SAVE_DIR]
+huggingface-cli download efficient-speech/lite-whisper-large-v3-acc --local-dir [SAVE_DIR]
 ```
 - Downlaod the processor model:
 ```bash
@@ -250,6 +248,6 @@ huggingface-cli download openai/whisper-large-v3 --local-dir [SAVE_DIR]
 ```
 *`[SAVE_DIR]` is your target directory. Inside asr/models. Example: ./asr/models/lite_whisper_large_v3*
 
-4. Run the model by using the python script `lite_whisper_large_v3.py`
+4. Run the model by using the python appropriate python script.
 
 
