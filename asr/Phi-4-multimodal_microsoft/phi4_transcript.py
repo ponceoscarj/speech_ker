@@ -1,202 +1,181 @@
-import torch
-import soundfile as sf
-import numpy as np
-from transformers import AutoModelForCausalLM, AutoProcessor
-from pyannote.audio import Model
-from pyannote.audio.pipelines import VoiceActivityDetection
-from pyannote.pipeline import Pipeline
-from pyannote.core import Segment
+import argparse
+import json
+import os
+import time
+from datetime import datetime
+from pathlib import Path
 import math
 
-# Configuration
-PHI4_MODEL_PATH = '/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/phi4'
-PYANNOTE_SEGMENTATION = '/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/pyannote_segmentation'
-CHUNK_DURATION = 30          # Target chunk size in seconds
-OVERLAP_SECONDS = 1.5        # Audio context in seconds to use from both sides (left and right)
-PYANNOTE_TOKEN = "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"
+import torch
+import soundfile as sf
+from transformers import (
+    AutoModelForCausalLM,
+    AutoProcessor,
+    GenerationConfig
+)
+import jiwer
+import warnings
+from tqdm import tqdm
 
-# Prompts for audio transcription (now static, no context)
-user_prompt = '<|user|>'
-assistant_prompt = '<|assistant|>'
-prompt_suffix = '<|end|>'
-speech_prompt = "Based on the attached audio, generate a comprehensive text transcription of the spoken content."
-PROMPT_TEMPLATE = f'{user_prompt}<|audio_1|>{speech_prompt}{prompt_suffix}{assistant_prompt}'
+# Suppress specific warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
 
-def get_device() -> torch.device:
-    """Return the appropriate device ('cuda' if available, else 'cpu')."""
-    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def real_time_factor(processing_time, audio_length, decimals=4):
+    return None if audio_length == 0 else round(processing_time / audio_length, decimals)
 
-def load_models() -> tuple:
-    """
-    Load the processor, generation model, and voice activity detection (VAD) pipeline.
-    """
-    device = get_device()
-    
-    # Load the processor for tokenization and feature extraction.
-    processor = AutoProcessor.from_pretrained(PHI4_MODEL_PATH, trust_remote_code=True)
-    
-    # Set the appropriate torch dtype and attention implementation.
-    torch_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
-    attn_implementation = "flash_attention_2" if torch.cuda.is_available() else None
-    
-    # Load the generation model.
+
+def read_gold_transcription(audio_path):
+    txt = Path(audio_path).with_suffix('.txt')
+    return txt.read_text().strip() if txt.exists() else None
+
+
+def calculate_wer(reference, hypothesis):
+    return jiwer.wer(reference, hypothesis)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Transcribe audio using Phi-4-multimodal with acoustic context, chunking, and batching.")
+    parser.add_argument("--input_dir", type=str, required=True, help="Directory with audio files")
+    parser.add_argument("--output_dir", type=str, default="transcripts", help="Where to save transcripts")
+    parser.add_argument("--model_path", type=str, required=True, help="Path to Phi-4-multimodal model")
+    parser.add_argument("--generation_config", type=str, default="generation_config.json", help="Generation config JSON")
+    parser.add_argument("--chunk_lengths", type=int, default=30, help="Seconds per chunk")
+    parser.add_argument("--context_length", type=int, default=0, help="Seconds of acoustic context to prepend to each chunk")
+    parser.add_argument("--batch_sizes", type=int, default=1, help="Number of files to process in parallel")
+    parser.add_argument("--extensions", nargs="+", default=[".wav", ".mp3", ".flac"], help="Audio file extensions to include")
+    parser.add_argument("--gold_standard", action="store_true", default=False, help="Compute WER if gold .txt present")
+    args = parser.parse_args()
+
+    os.makedirs(args.output_dir, exist_ok=True)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # Load processor & model
+    processor = AutoProcessor.from_pretrained(args.model_path, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
-        PHI4_MODEL_PATH,
+        args.model_path,
         trust_remote_code=True,
-        torch_dtype=torch_dtype,
-        attn_implementation=attn_implementation,
-        device_map="auto"
-    )
-    
-    # Load Pyannote VAD pipeline.
-    segmentation_model = Model.from_pretrained(PYANNOTE_SEGMENTATION).to(device)
-    
-    vad_pipeline = VoiceActivityDetection(segmentation=segmentation_model)
-    vad_pipeline.to(device)
+        torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
+        _attn_implementation="flash_attention_2"
+    ).to(device)
+    generation_config = GenerationConfig.from_pretrained(args.model_path, args.generation_config)
 
-    HYPER_PARAMETERS = {
-        "min_duration_on": 0.1,
-        "min_duration_off": 0.1,
-    }
-    vad_pipeline.instantiate(HYPER_PARAMETERS)    
-    
-    return processor, model, vad_pipeline, device
+    # Gather audio file paths
+    files = []
+    for ext in args.extensions:
+        files.extend(Path(args.input_dir).rglob(f"*{ext}"))
+    files = sorted(files)
+    total_files = len(files)
 
-def pyannote_chunking(vad_pipeline: Pipeline, audio_path: str, chunk_duration: float) -> list:
-    """
-    Run VAD on the audio file and split speech segments into sub-chunks
-    of up to chunk_duration seconds.
-    """
-    vad_results = vad_pipeline(audio_path)
-    speech_segments = []
-    current_segment = None
-    
-    # Merge consecutive speech segments.
-    for segment, _, label in vad_results.itertracks(yield_label=True):
-        if label == "speech":
-            if current_segment is None:
-                current_segment = segment
-            else:
-                # Extend the current segment.
-                current_segment = Segment(current_segment.start, segment.end)
-        else:
-            if current_segment and (current_segment.end - current_segment.start) > 0.1:
-                speech_segments.append(current_segment)
-            current_segment = None
-    
-    # Append the last segment if applicable.
-    if current_segment and (current_segment.end - current_segment.start) > 0.1:
-        speech_segments.append(current_segment)
-    
-    # Split segments into sub-chunks of length <= chunk_duration seconds.
-    chunks = []
-    for segment in speech_segments:
-        segment_duration = segment.end - segment.start
-        num_subchunks = math.ceil(segment_duration / chunk_duration)
-        for i in range(num_subchunks):
-            sub_start = segment.start + i * chunk_duration
-            sub_end = min(segment.end, sub_start + chunk_duration)
-            chunks.append(Segment(sub_start, sub_end))
-    
-    return chunks
+    results = []
+    batch_rtfs = []
+    total_wer, wer_count = 0.0, 0
+    total_audio_duration = 0.0
+    start_all = time.time()
 
-@torch.inference_mode()  # More efficient than torch.no_grad()
-def process_audio(audio_path: str, chunk_duration: float = CHUNK_DURATION) -> str:
-    """
-    Process the entire audio file:
-      - Load and convert audio to mono.
-      - Use VAD to chunk the audio.
-      - For each chunk, extract contextual audio from both the previous (left) and future (right) segments.
-      - Generate transcription for the extended (contextual) audio.
-    """
-    # Load models and device information.
-    processor, model, vad_pipeline, device = load_models()
-    
-    # Read audio with memory mapping; force 2D array and average across channels to get mono.
-    audio, sr = sf.read(audio_path, always_2d=True)
-    audio = np.mean(audio, axis=1)
-    
-    # Create a tensor for the audio data.
-    audio_tensor = torch.as_tensor(audio, dtype=torch.float32, device=device)
-    if device.type == 'cuda':
-        audio_tensor = audio_tensor.pin_memory().to(device, non_blocking=True)
-    else:
-        audio_tensor = audio_tensor.to(device)
+    main_bar = tqdm(total=total_files, desc="Batches")
+    wer_bar = tqdm(total=total_files if args.gold_standard else 0, desc="WER_Calc", leave=False)
 
-    # Use VAD to obtain speech chunks.
-    chunks = pyannote_chunking(vad_pipeline, audio_path, chunk_duration)
-    if not chunks:
-        print("No speech segments detected.")
-        return ""    
-    
-    full_transcript = []
-    # Determine the number of samples corresponding to the overlap duration.
-    buffer_samples = int(OVERLAP_SECONDS * sr)
+    for batch_start in range(0, total_files, args.batch_sizes):
+        batch = files[batch_start : batch_start + args.batch_sizes]
+        t0 = time.time()
+        batch_texts = []
+        batch_duration = 0.0
 
-    # Process each detected speech chunk with contextual (left and right) audio.
-    for i, chunk in enumerate(chunks):
-        # Compute current chunk indices.
-        start_idx = int(chunk.start * sr)
-        end_idx = int(chunk.end * sr)
-        
-        if i == 0:  # First chunk
-            left_context = 0
-            right_context = buffer_samples       
+        # Process each file in the batch
+        for path in batch:
+            audio_array, sr = sf.read(path)
+            total_audio_duration += len(audio_array) / sr
+            batch_duration += len(audio_array) / sr
 
-        elif i == len(chunks) - 1:
-            left_context = buffer_samples
-            right_context = 0
-        # Middle chunks: full bilateral context
-        
-        else:
-            left_context = buffer_samples
-            right_context = buffer_samples
+            chunk_samples = args.chunk_lengths * sr
+            context_samples = args.context_length * sr
+            num_chunks = math.ceil(len(audio_array) / chunk_samples)
 
-        context_start_idx = max(0, start_idx - left_context)
-        context_end_idx = min(audio_tensor.size(0), end_idx + right_context)
-        # Extract the audio segment including both left and right context.
-        chunk_audio = audio_tensor[context_start_idx:context_end_idx]
+            transcript_parts = []
+            for idx in range(num_chunks):
+                start = idx * chunk_samples
+                end = min(len(audio_array), start + chunk_samples)
+                # prepend acoustic context from previous audio
+                context_start = max(0, start - context_samples)
+                audio_in = audio_array[context_start:end]
 
-        # Process the prompt and audio.
-        inputs = processor(
-            text=PROMPT_TEMPLATE,  # Static prompt with transcription instruction
-            audios=[chunk_audio.cpu().numpy()],
-            return_tensors="pt",
-            sampling_rate=sr,
-            padding='longest',
-            truncation=True
-        ).to(device)
-        
-        # Generate transcription with specified generation parameters.
-        gen_config = {
-            "max_new_tokens": 1024,
-            "temperature": 0.2,
-            "top_p": 0.9,
-            "repetition_penalty": 1.1,
-            "use_cache": True,
-            "pad_token_id": processor.tokenizer.pad_token_id or processor.tokenizer.eos_token_id
-        }
-        
-        outputs = model.generate(**inputs, **gen_config)
-        # Slice off the input tokens and decode only the new tokens.
-        assert "input_ids" in inputs, "Expected key 'input_ids' not found in processor outputs."        
-        input_length = inputs['input_ids'].size(1)
-        transcript = processor.batch_decode(
-            outputs[:, input_length:],
-            skip_special_tokens=True,
-            clean_up_tokenization_spaces=True
-        )[0].strip()
-        
-        full_transcript.append(transcript)
-    
-    return " ".join(full_transcript)
+                prompt = (
+                    "<|user|><|audio_1|>Transcribe the audio clip into text.<|end|><|assistant|>"
+                )
+                inputs = processor(
+                    text=prompt,
+                    audios=[(audio_in, sr)],
+                    return_tensors="pt"
+                ).to(device)
+                with torch.inference_mode():
+                    gen_ids = model.generate(
+                        **inputs,
+                        generation_config=generation_config,
+                        max_new_tokens=1200
+                    )
+                # strip prompt tokens
+                out_ids = gen_ids[:, inputs["input_ids"].shape[1]:]
+                text = processor.batch_decode(
+                    out_ids,
+                    skip_special_tokens=True,
+                    clean_up_tokenization_spaces=False
+                )[0]
+                transcript_parts.append(text.strip())
+
+            batch_texts.append(" ".join(transcript_parts))
+
+        t1 = time.time()
+        # Compute and log RTF for this batch
+        rtf = real_time_factor(t1 - t0, batch_duration)
+        if rtf is not None:
+            batch_rtfs.append(rtf)
+        print(f"Batch {(batch_start // args.batch_sizes) + 1}/{(total_files + args.batch_sizes - 1)//args.batch_sizes}: RTF={rtf:.4f}")
+
+        # Collect results and WER per file
+        for path, hyp in zip(batch, batch_texts):
+            entry = {"audio_file_path": str(path), "pred_text": hyp}
+            if args.gold_standard:
+                gold = read_gold_transcription(str(path))
+                entry["text"] = gold or "N/A"
+                if gold:
+                    w = calculate_wer(gold, hyp)
+                    entry["wer"] = w
+                    total_wer += w
+                    wer_count += 1
+                    wer_bar.update(1)
+            results.append(entry)
+            main_bar.update(1)
+
+    main_bar.close()
+    wer_bar.close()
+
+    total_time = time.time() - start_all
+    avg_wer = (total_wer / wer_count) if wer_count > 0 else None
+    overall_rtf = real_time_factor(total_time, total_audio_duration)
+
+    # Save outputs
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_base = f"phi4_results_{timestamp}"
+    res_file = Path(args.output_dir) / f"{out_base}.json"
+    meta_file = Path(args.output_dir) / f"{out_base}_meta.json"
+
+    with open(res_file, "w") as f_out:
+        for item in results:
+            f_out.write(json.dumps(item) + "\n")
+
+    with open(meta_file, "w") as f_meta:
+        json.dump({
+            "total_processing_time_s": total_time,
+            "audio_duration_s": total_audio_duration,
+            "real_time_factor": overall_rtf,
+            "batch_rtfs": batch_rtfs,
+            "average_wer": avg_wer
+        }, f_meta, indent=2)
+
+    print(f"\nResults saved to: {res_file}")
+    print(f"Metadata saved to: {meta_file}")
+    print(f"Overall RTF={overall_rtf:.4f}" + (f" | Avg WER={avg_wer:.4f}" if avg_wer is not None else ""))
 
 if __name__ == "__main__":
-    # Optimize CUDA settings if available.
-    if torch.cuda.is_available():
-        torch.backends.cudnn.benchmark = True
-        torch.backends.cuda.matmul.allow_tf32 = True
-        torch.backends.cudnn.allow_tf32 = True        
-
-    transcription = process_audio("/home/ext_ponceponte_oscar_mayo_edu/speech_ker/audio_files/afap024.wav")
-    print("Final Transcription:\n", transcription)
+    main()
