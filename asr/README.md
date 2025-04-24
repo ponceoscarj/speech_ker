@@ -214,15 +214,7 @@ huggingface-cli download nyrahealth/CrisperWhisper --local-dir [SAVE_DIR]
 
 ### Notes:
 - **Partitioning**: Uses **hard segmentation** (no overlap/stride).
-- **FlashAttention is NOT required** for this model.
 - The processor must be downloaded from [`openai/whisper-large-v3`](https://huggingface.co/openai/whisper-large-v3).
-
-
-| Model Name                                  | Processor Model               | Description                         | Python Script Name                          |
-|---------------------------------------------|-------------------------------|-------------------------------------|--------------------------------------|
-| `efficient-speech/lite-whisper-large-v3`    | `openai/whisper-large-v3`     | Base lightweight Whisper variant    | `lite_whisper_large_v3.py`           |
-| `efficient-speech/lite-whisper-large-v3-acc`| `openai/whisper-large-v3`     | Accuracy-tuned variant              | `lite_whisper_large_v3_acc.py`       |
-
 
 ## Instructions
 
@@ -232,8 +224,8 @@ huggingface-cli download nyrahealth/CrisperWhisper --local-dir [SAVE_DIR]
 ```bash
 pip install torch torchaudio transformers librosa numpy
 ```
-3. Login to HuggingFace and download model files
-- Login into huggingface and introduce your token. 
+3. Install [FlashAttention](https://github.com/Dao-AILab/flash-attention) (for Speed-up)
+4. Login to HuggingFace and download model files
 ```bash
 huggingface-cli login
 ```
@@ -248,6 +240,6 @@ huggingface-cli download openai/whisper-large-v3 --local-dir [SAVE_DIR]
 ```
 *`[SAVE_DIR]` is your target directory. Inside asr/models. Example: ./asr/models/lite_whisper_large_v3*
 
-4. Run the model by using the python appropriate python script.
+5. Run the model by using the python script 'lite_whisper.py'.
 
 
