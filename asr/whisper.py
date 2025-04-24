@@ -88,8 +88,7 @@ def main():
             torch_dtype=torch_dtype,
             device_map="auto",
             attn_implementation="flash_attention_2",
-            low_cpu_mem_usage=True,
-            use_safetensors=True,
+            low_cpu_mem_usage=True
         )
         bar.update(1)
       
