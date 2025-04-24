@@ -43,8 +43,8 @@ Brief description of the models from NVIDIA NeMo.
 ## Requirements
 1. Create conda environment with python 3.10.12 - more stable
 ```bash
-conda create --name nemo python==3.10.12
-conda activate nemo
+conda create --name speech_ker python==3.10.12
+conda activate speech_ker
 ```
 
 2. Install latest torch - check your CUDA version [here](https://pytorch.org/get-started/locally/)
