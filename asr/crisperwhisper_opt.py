@@ -86,7 +86,6 @@ def main():
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
             args.model,
             torch_dtype=torch_dtype,
-            use_flash_attention_2=True,
             device_map="auto",
             attn_implementation="flash_attention_2",
             low_cpu_mem_usage=True
