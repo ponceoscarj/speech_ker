@@ -230,7 +230,7 @@ run_experiment() {
 
     {
         echo -e "\n=== Starting Transcription ===\n"
-        python -u lite_whisper_large_v3.py \
+        python -u lite_whisper.py \
             --input_dir "${input_dir}" \
             --output_dir "${experiment_dir}" \
             --output_filename "${output_filename}" \
