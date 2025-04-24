@@ -164,20 +164,20 @@ python speech_to_text_aed_chunked_infer.py \
 ```
 
 
-# CrisperWhisper
+# CrisperWhisper and Distil-Whisper-large-v3.5
 
 ## Instructions
 1. Create environment with Python 3.10 (more stable) - use your nemo conda environment if you have it
  
-2. Clone repository into your `asr/models` folder:
+2. Clone repository into your `asr/models` folder **(only for CrisperWhisper)**:
 ```bash
 git clone https://github.com/nyrahealth/CrisperWhisper.git
 cd CrisperWhisper
 ```
 
-3. Install the dependencies of CrisperWhisper and `crisperwhisper.py`
+3. Install the dependencies
  ```bash
- pip install -r ./CrisperWhisper/requirements.txt
+ pip install -r ./CrisperWhisper/requirements.txt  # if you’re using CrisperWhisper
  pip install jiwer # for WER calculation
  ```
 
@@ -190,34 +190,41 @@ cd CrisperWhisper
 - `packaging`:                      `pip install packaging`
 - `ninja`:                          `pip install ninja`
 ```
+
 **Install FlashAttention:**
 ```bash
 MAX_JOBS=4 pip install flash-attn --no-build-isolation
  ```
 
-5. Install the CrisperWhiser model
-
-- Accept the license of the model [CrisperWhisper](https://huggingface.co/nyrahealth/CrisperWhisper)
+5. Install the models
 - Login into huggingface and introduce your token. 
 ```bash
 huggingface-cli login
 ```
+
 - Download model files to a specific folder:
+  
+# CrisperWhisper
+- Accept the license of the model [CrisperWhisper](https://huggingface.co/nyrahealth/CrisperWhisper)
 ```bash
 huggingface-cli download nyrahealth/CrisperWhisper --local-dir [SAVE_DIR]
 ```
+
+# Distil-Whisper
+```bash
+huggingface-cli download distil-whisper/distil-large-v3.5 --local-dir [SAVE_DIR]
+```
+
 *`[SAVE_DIR]` is your target directory. Inside asr/models. Example: ./asr/models/CrisperWhisper*
 
-6. Run the model by using the python script `crisperwhisper.py`
+6. Run the model by using the python script `whisper.py`
 
 # Lite-Whisper
-
 ### Notes:
 - **Partitioning**: Uses **hard segmentation** (no overlap/stride).
 - The processor must be downloaded from [`openai/whisper-large-v3`](https://huggingface.co/openai/whisper-large-v3).
 
 ## Instructions
-
 ---
 1. Create environment with Python 3.10 (you can use the existing `nemo` conda environment):
 2. Install required dependencies:
