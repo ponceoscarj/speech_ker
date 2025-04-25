@@ -222,7 +222,7 @@ run_experiment() {
 
     {
         echo -e "\n=== Starting Transcription ===\n"
-        python -u lite_whisper.py \
+        python -u phi4_transcript.py \
             --input_dir "${input_dir}" \
             --output_dir "${experiment_dir}" \
             --output_filename "${output_filename}" \
