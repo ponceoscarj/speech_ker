@@ -23,9 +23,13 @@ warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
 
 # Color constants
 COLOR_FILE = "#00ff00"
-COLOR_BATCH = "#ffff00"
 COLOR_CHUNK = "#00ffff"
 COLOR_WER = "#ff00ff"
+
+PROMPT = (
+    "<|user|><|audio_1|>Based on the attached audio, generate a comprehensive text transcription"
+    " of the spoken content.<|end|><|assistant|>"
+)
 
 def real_time_factor(processing_time, audio_length, decimals=4):
     return None if audio_length == 0 else round(processing_time / audio_length, decimals)
@@ -41,11 +45,8 @@ def chunk_audio(array, sample_rate, chunk_sec):
     chunk_size = int(chunk_sec * sample_rate)
     return [array[i:i + chunk_size] for i in range(0, len(array), chunk_size)]
 
-def format_time(seconds):
-    return f"{seconds:.1f}s"
-
 def main():
-    parser = argparse.ArgumentParser(description="True batch inference with chunk processing")
+    parser = argparse.ArgumentParser(description="Per-file batch inference with chunk processing")
     parser.add_argument("--input_dir", type=str, required=True)
     parser.add_argument("--output_dir", type=str, default="transcripts")
     parser.add_argument("--model_path", type=str, required=True)
@@ -60,7 +61,7 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # Load model components
+    # Load model
     processor = AutoProcessor.from_pretrained(args.model_path, trust_remote_code=True, use_fast=True)
     model = AutoModelForCausalLM.from_pretrained(
         args.model_path,
@@ -70,7 +71,7 @@ def main():
     ).to(device)
     generation_config = GenerationConfig.from_pretrained(args.model_path, args.generation_config)
 
-    # File handling
+    # Gather files
     files = []
     for ext in args.extensions:
         files.extend(Path(args.input_dir).rglob(f"*{ext}"))
@@ -78,50 +79,54 @@ def main():
     total_files = len(files)
 
     results = []
-    batch_rtfs = []
     total_wer, wer_count = 0.0, 0
     total_audio_duration = 0.0
     start_all = time.time()
 
-    # Main progress bar
-    with tqdm(total=total_files, desc="📁 Files", colour=COLOR_FILE, position=0) as main_bar:
-        # File batch processing
-        for batch_idx, batch_start in enumerate(range(0, total_files, args.batch_sizes), 1):
-            file_batch = files[batch_start:batch_start + args.batch_sizes]
-            batch_files = [Path(p).name for p in file_batch]
-            
-            # Collect all chunks from all files in this batch
-            all_chunks = []
-            chunk_metadata = []
-            for path in file_batch:
-                audio_array, sr = sf.read(path)
-                duration = len(audio_array) / sr
+    # File-level progress
+    with tqdm(total=total_files, desc="📁 Files", colour=COLOR_FILE, position=0) as file_bar:
+        # Iterate files in file-batches
+        for batch_start in range(0, total_files, args.batch_sizes):
+            batch_files = files[batch_start:batch_start + args.batch_sizes]
+            # Prepare per-file chunks
+            chunks_by_file = {}
+            srs = {}
+            for path in batch_files:
+                audio, sr = sf.read(path)
+                srs[path] = sr
+                duration = len(audio) / sr
                 total_audio_duration += duration
-                chunks = chunk_audio(audio_array, sr, args.chunk_lengths)
-                all_chunks.extend([(chunk, sr) for chunk in chunks])
-                chunk_metadata.extend([(path, duration)] * len(chunks))
+                chunks_by_file[path] = chunk_audio(audio, sr, args.chunk_lengths)
 
-            # Batch process all chunks
-            total_chunks = len(all_chunks)
-            tqdm.write(f"\n🚀 Processing {len(file_batch)} files ({total_chunks} chunks)")
-            
-            batch_texts = defaultdict(list)
-            with tqdm(total=total_chunks, desc="🔊 Chunks", colour=COLOR_CHUNK, 
-                     position=1, leave=False) as chunk_bar:
-                # Process in chunk batches
-                for chunk_start in range(0, total_chunks, args.batch_sizes):
-                    chunk_batch = all_chunks[chunk_start:chunk_start + args.batch_sizes]
-                    
-                    # Prepare batch inputs
+            # Determine number of rounds (max chunks in batch)
+            max_rounds = max(len(chunks) for chunks in chunks_by_file.values())
+            batch_texts = {path: [] for path in batch_files}
+
+            # Chunk-round progress bar
+            with tqdm(total=max_rounds, desc="🔊 Chunk rounds", colour=COLOR_CHUNK, position=1, leave=False) as chunk_round_bar:
+                # For each chunk index
+                for i in range(max_rounds):
+                    # Gather up to batch_sizes chunks from each file
+                    to_process = []
+                    paths_order = []
+                    for path in batch_files:
+                        chunks = chunks_by_file[path]
+                        if i < len(chunks):
+                            to_process.append((chunks[i], srs[path]))
+                            paths_order.append(path)
+
+                    if not to_process:
+                        break
+
+                    # Process this sub-batch of chunks
                     inputs = processor(
-                        text=["<|user|><|audio_1|>...<|end|><|assistant|>"] * len(chunk_batch),
-                        audios=chunk_batch,
+                        text=[PROMPT] * len(to_process),
+                        audios=to_process,
                         return_tensors="pt",
                         padding=True,
                         truncation=True
                     ).to(device)
 
-                    # Generate text
                     with torch.inference_mode():
                         gen_ids = model.generate(
                             **inputs,
@@ -129,59 +134,52 @@ def main():
                             max_new_tokens=1200
                         )
 
-                    # Decode outputs
                     outputs = processor.batch_decode(
                         gen_ids[:, inputs["input_ids"].shape[1]:],
                         skip_special_tokens=True,
                         clean_up_tokenization_spaces=False
                     )
 
-                    # Map outputs back to files
-                    for idx, output in enumerate(outputs):
-                        original_path = chunk_metadata[chunk_start + idx][0]
-                        batch_texts[original_path].append(output.strip())
-                    
-                    chunk_bar.update(len(chunk_batch))
+                    # Assign back to each file
+                    for j, text in enumerate(outputs):
+                        batch_texts[paths_order[j]].append(text.strip())
 
-            # Combine chunk results per file
-            for path in file_batch:
+                    chunk_round_bar.update(1)
+
+            # Finalize each file
+            for path in batch_files:
                 transcript = " ".join(batch_texts[path])
-                results.append({
-                    "audio_file_path": str(path),
-                    "pred_text": transcript
-                })
-                
-                # WER calculation
+                entry = {"audio_file_path": str(path), "pred_text": transcript}
                 if args.gold_standard:
                     gold = read_gold_transcription(str(path))
                     if gold:
                         wer = calculate_wer(gold, transcript)
                         total_wer += wer
                         wer_count += 1
-                        main_bar.set_postfix_str(f"Avg WER: {total_wer/wer_count:.2%}")
+                        file_bar.set_postfix({"Avg WER": f"{(total_wer/wer_count):.2%}"})
+                        entry["wer"] = wer
+                results.append(entry)
+                file_bar.update(1)
 
-            main_bar.update(len(file_batch))
-
-    # Save results and metadata
+    # Save output
     out_base = args.output_filename or f"results_{datetime.now().isoformat()}"
     res_file = Path(args.output_dir) / f"{out_base}.json"
     meta_file = Path(args.output_dir) / f"{out_base}_meta.json"
-    
+
     with open(res_file, "w") as f:
         json.dump(results, f, indent=2)
-        
+
     total_time = time.time() - start_all
-    meta_data = {
+    meta = {
         "total_time": total_time,
         "audio_duration": total_audio_duration,
         "rtf": real_time_factor(total_time, total_audio_duration),
-        "avg_wer": total_wer / wer_count if wer_count else None
+        "avg_wer": (total_wer/wer_count) if wer_count else None
     }
-    
     with open(meta_file, "w") as f:
-        json.dump(meta_data, f, indent=2)
+        json.dump(meta, f, indent=2)
 
-    print(f"\n✅ Processing complete! RTF: {meta_data['rtf']:.2f}")
+    print(f"\n✅ Processing complete! RTF: {meta['rtf']:.2f}")
 
 if __name__ == "__main__":
     main()
