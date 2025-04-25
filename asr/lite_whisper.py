@@ -137,9 +137,6 @@ for batch_start in range(0, total_files, args.batch_sizes):
                     to_process.append(chunks_by_file[path][round_idx])
                     paths_order.append(path)
 
-            if not to_process:
-                continue
-
             t0 = time.time()
             inputs = processor(
                 to_process,
@@ -193,26 +190,27 @@ if args.gold_standard and wer_count > 0:
     print(f"\nAverage WER over {wer_count} files: {avg_wer:.4f}\n")
 
   
-    # ── Save Outputs ───────────────────────────────────────────────────────
-    rtf_all = real_time_factor(total_time, total_audio_duration)
-    out_base = args.output_filename or f"results_{datetime.now().isoformat()}"
-    results_file = os.path.join(args.output_dir, f"{out_base}.json")
-    meta_file    = os.path.join(args.output_dir, f"{out_base}_meta.json")
+# ── Save Outputs ───────────────────────────────────────────────────────
+rtf_all = real_time_factor(total_time, total_audio_duration)
+out_base = args.output_filename or f"results_{datetime.now().isoformat()}"
+results_file = os.path.join(args.output_dir, f"{out_base}.json")
+meta_file = os.path.join(args.output_dir, f"{out_base}_meta.json")
 
-    with open(results_file, "w") as f:
-        for e in results:
-            f.write(json.dumps(e) + "\n")
-    with open(meta_file, "w") as f:
-        json.dump({
-            "processing_time_s": total_time,
-            "audio_duration_s": total_audio_duration,
-            "real_time_factor": rtf_all,
-            "batch_rtfs": batch_rtfs
-        }, f, indent=2)
+with open(results_file, "w") as f:
+    for e in results:
+        f.write(json.dumps(e) + "\n")
 
-    print(f"\nResults → {results_file}")
-    print(f"Metadata → {meta_file}")
-    print(f"Total Time: {total_time:.2f}s  Audio: {total_audio_duration/60:.2f}m  RTF: {rtf_all:.4f}")
+with open(meta_file, "w") as f:
+    json.dump({
+        "processing_time_s": total_time,
+        "audio_duration_s": total_audio_duration,
+        "real_time_factor": rtf_all,
+        "batch_rtfs": batch_rtfs
+    }, f, indent=2)
+
+print(f"\nResults → {results_file}")
+print(f"Metadata → {meta_file}")
+print(f"Total Time: {total_time:.2f}s  Audio: {total_audio_duration / 60:.2f}m  RTF: {rtf_all:.4f}")
 
 if __name__ == "__main__":
     main()
