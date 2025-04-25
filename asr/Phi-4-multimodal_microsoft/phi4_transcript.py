@@ -67,10 +67,12 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(
         args.model_path,
         trust_remote_code=True,
-        torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32
+        torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
+        _attn_implementation=None
     ).to(device)
 
     model._attn_implementation = "flash_attention_2"
+    print(model._attn_implementation)
 
     generation_config = GenerationConfig.from_pretrained(args.model_path, args.generation_config)
 
