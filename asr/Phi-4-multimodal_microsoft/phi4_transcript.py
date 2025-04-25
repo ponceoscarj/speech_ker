@@ -20,23 +20,28 @@ from tqdm import tqdm
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
 
+# Color constants for progress bars
+COLOR_FILE = "#00ff00"
+COLOR_BATCH = "#ffff00"
+COLOR_CHUNK = "#00ffff"
+COLOR_WER = "#ff00ff"
+
 def real_time_factor(processing_time, audio_length, decimals=4):
     return None if audio_length == 0 else round(processing_time / audio_length, decimals)
-
 
 def read_gold_transcription(audio_path):
     txt_path = Path(audio_path).with_suffix('.txt')
     return txt_path.read_text().strip() if txt_path.exists() else None
 
-
 def calculate_wer(reference, hypothesis):
     return jiwer.wer(reference, hypothesis)
 
-
 def chunk_audio(array, sample_rate, chunk_sec):
     chunk_size = int(chunk_sec * sample_rate)
-    return [array[i : i + chunk_size] for i in range(0, len(array), chunk_size)]
+    return [array[i:i + chunk_size] for i in range(0, len(array), chunk_size)]
 
+def format_time(seconds):
+    return f"{seconds:.1f}s"
 
 def main():
     parser = argparse.ArgumentParser(description="Transcribe audio using Phi-4-multimodal with chunking and batching.")
@@ -63,9 +68,7 @@ def main():
         torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
         _attn_implementation=None
     ).to(device)
-
     model._attn_implementation = "flash_attention_2"
-
     generation_config = GenerationConfig.from_pretrained(args.model_path, args.generation_config)
 
     # Gather audio file paths
@@ -75,82 +78,98 @@ def main():
     files = sorted(files)
     total_files = len(files)
 
+    # Initialize progress tracking
     results = []
     batch_rtfs = []
     total_wer, wer_count = 0.0, 0
     total_audio_duration = 0.0
     start_all = time.time()
 
-    main_bar = tqdm(total=total_files, desc="Batches")
-    wer_bar = tqdm(total=total_files if args.gold_standard else 0, desc="WER_Calc", leave=False)
+    # Main progress bar
+    with tqdm(
+        total=total_files,
+        desc="📁 Overall Progress",
+        unit="file",
+        bar_format="{l_bar}{bar:40}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
+        colour=COLOR_FILE,
+        position=0
+    ) as main_bar:
 
-    for batch_start in range(0, total_files, args.batch_sizes):
-        batch = files[batch_start : batch_start + args.batch_sizes]
-        t0 = time.time()
-        batch_texts = []
-        batch_duration = 0.0
+        # Process in batches
+        for batch_idx, batch_start in enumerate(range(0, total_files, args.batch_sizes), 1):
+            batch = files[batch_start : batch_start + args.batch_sizes]
+            batch_size = len(batch)
+            batch_duration = 0.0
+            batch_texts = []
+            tqdm.write(f"\n🚀 Starting Batch {batch_idx} ({batch_size} files)")
 
-        # Process each file in the batch
-        for path in batch:
-            audio_array, sr = sf.read(path)
-            total_audio_duration += len(audio_array) / sr
-            batch_duration += len(audio_array) / sr
+            # Batch timer
+            batch_timer = tqdm(
+                total=None,
+                desc=f"⚡ Processing Batch {batch_idx}",
+                bar_format="{desc}: {elapsed}",
+                colour=COLOR_BATCH,
+                position=1,
+                leave=False
+            )
 
-            # Chunk audio into fixed lengths
-            chunks = chunk_audio(audio_array, sr, args.chunk_lengths)
-            transcript_parts = []
-            for chunk in chunks:
-                prompt = (
-                    "<|user|><|audio_1|>Based on the attached audio, generate a comprehensive text transcription"
-                    " of the spoken content.<|end|><|assistant|>"
-                )
-                inputs = processor(
-                    text=prompt,
-                    audios=[(chunk, sr)],
-                    return_tensors="pt"
-                ).to(device)
-                with torch.inference_mode():
-                    gen_ids = model.generate(
-                        **inputs,
-                        generation_config=generation_config,
-                        max_new_tokens=1200
-                    )
-                # Remove prompt tokens
-                out_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
-                text = processor.batch_decode(
-                    out_ids,
-                    skip_special_tokens=True,
-                    clean_up_tokenization_spaces=False
-                )[0]
-                transcript_parts.append(text.strip())
+            # Process each file in batch
+            for path in batch:
+                file_timer = time.time()
+                audio_array, sr = sf.read(path)
+                duration = len(audio_array) / sr
+                total_audio_duration += duration
+                batch_duration += duration
 
-            batch_texts.append(" ".join(transcript_parts))
+                # Chunk processing
+                chunks = chunk_audio(audio_array, sr, args.chunk_lengths)
+                transcript_parts = []
+                
+                with tqdm(
+                    chunks,
+                    desc=f"🔊 {Path(path).name[:15]}...",
+                    unit="chunk",
+                    colour=COLOR_CHUNK,
+                    position=2,
+                    leave=False,
+                    bar_format="{l_bar}{bar:30}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
+                ) as chunk_bar:
+                    for chunk in chunk_bar:
+                        prompt = "<|user|><|audio_1|>...<|end|><|assistant|>"
+                        inputs = processor(text=prompt, audios=[(chunk, sr)], return_tensors="pt").to(device)
+                        with torch.inference_mode():
+                            gen_ids = model.generate(**inputs, generation_config=generation_config, max_new_tokens=1200)
+                        out_ids = gen_ids[:, inputs["input_ids"].shape[1]:]
+                        text = processor.batch_decode(out_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
+                        transcript_parts.append(text.strip())
+                
+                batch_texts.append(" ".join(transcript_parts))
+                main_bar.update(1)
+                file_time = time.time() - file_timer
+                tqdm.write(f"   ✅ {Path(path).name} processed in {format_time(file_time)}")
 
-        t1 = time.time()
-        # Compute and log RTF for this batch
-        rtf = real_time_factor(t1 - t0, batch_duration)
-        if rtf is not None:
-            batch_rtfs.append(rtf)
-        print(f"Batch {(batch_start // args.batch_sizes) + 1}/{(total_files + args.batch_sizes - 1)//args.batch_sizes}: RTF={rtf:.4f}")
+            # Finish batch processing
+            batch_time = time.time() - batch_timer.last_print_t
+            rtf = real_time_factor(batch_time, batch_duration)
+            batch_rtfs.append(rtf or 0)
+            batch_timer.close()
+            tqdm.write(f"🏁 Batch {batch_idx} completed | RTF: {rtf:.2f} | Time: {format_time(batch_time)}")
 
-        # Collect results and WER per file
-        for path, hyp in zip(batch, batch_texts):
-            entry = {"audio_file_path": str(path), "pred_text": hyp}
-            if args.gold_standard:
-                gold = read_gold_transcription(str(path))
-                entry["text"] = gold or "N/A"
-                if gold:
-                    w = calculate_wer(gold, hyp)
-                    entry["wer"] = w
-                    total_wer += w
-                    wer_count += 1
-                    wer_bar.update(1)
-            results.append(entry)
-            main_bar.update(1)
+            # Process results
+            for path, hyp in zip(batch, batch_texts):
+                entry = {"audio_file_path": str(path), "pred_text": hyp}
+                if args.gold_standard:
+                    gold = read_gold_transcription(str(path))
+                    entry["text"] = gold or "N/A"
+                    if gold:
+                        w = calculate_wer(gold, hyp)
+                        entry["wer"] = w
+                        total_wer += w
+                        wer_count += 1
+                        main_bar.set_postfix_str(f"Avg WER: {total_wer/wer_count:.2%}" if wer_count else "")
+                results.append(entry)
 
-    main_bar.close()
-    wer_bar.close()
-
+    # Final calculations
     total_time = time.time() - start_all
     avg_wer = (total_wer / wer_count) if wer_count > 0 else None
     overall_rtf = real_time_factor(total_time, total_audio_duration)
@@ -161,21 +180,22 @@ def main():
     meta_file = Path(args.output_dir) / f"{out_base}_meta.json"
 
     with open(res_file, "w") as f_out:
-        for item in results:
-            f_out.write(json.dumps(item) + "\n")
+        json.dump(results, f_out, indent=2)
 
+    meta_data = {
+        "total_processing_time_s": total_time,
+        "audio_duration_s": total_audio_duration,
+        "real_time_factor": overall_rtf,
+        "batch_rtfs": batch_rtfs,
+        "average_wer": avg_wer
+    }
     with open(meta_file, "w") as f_meta:
-        json.dump({
-            "total_processing_time_s": total_time,
-            "audio_duration_s": total_audio_duration,
-            "real_time_factor": overall_rtf,
-            "batch_rtfs": batch_rtfs,
-            "average_wer": avg_wer
-        }, f_meta, indent=2)
+        json.dump(meta_data, f_meta, indent=2)
 
-    print(f"\nResults saved to: {res_file}")
-    print(f"Metadata saved to: {meta_file}")
-    print(f"Overall RTF={overall_rtf:.4f}" + (f" | Avg WER={avg_wer:.4f}" if avg_wer is not None else ""))
+    print(f"\n🎉 Processing complete!")
+    print(f"📄 Results saved to: {res_file}")
+    print(f"📊 Metadata saved to: {meta_file}")
+    print(f"⏱️ Overall RTF: {overall_rtf:.2f}" + (f" | 🎯 Avg WER: {avg_wer:.2%}" if avg_wer else ""))
 
 if __name__ == "__main__":
     main()
