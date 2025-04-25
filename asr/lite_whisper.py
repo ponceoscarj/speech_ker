@@ -141,14 +141,14 @@ def main():
     max_rounds = max(len(chunks) for chunks in chunks_by_file.values())
     batch_texts = {path: [] for path in batch_files}
   
-     with tqdm(total=max_rounds, desc="🔊 Chunk rounds", leave=False) as chunk_round_bar:
-        for i in range(max_rounds):
-            to_process = []
-            paths_order = []
-            for path in batch_files:
-                if i < len(chunks_by_file[path]):
-                    to_process.append(chunks_by_file[path][i])
-                    paths_order.append(path)
+    with tqdm(total=max_rounds, desc="🔊 Chunk rounds", leave=False) as chunk_round_bar:
+      for i in range(max_rounds):
+        to_process = []
+        paths_order = []
+        for path in batch_files:
+          if i < len(chunks_by_file[path]):
+            to_process.append(chunks_by_file[path][i])
+            paths_order.append(path)
                   
         t0 = time.time()
        inputs = processor(
@@ -171,7 +171,7 @@ def main():
                 batch_texts[path].append(text.strip())
               
         # compute RTF
-        dur = sum(len(a)/16000 for a in batch_arrs)
+        dur = sum(len(a)/16000 for a in to_process)
         rtf = real_time_factor(t1-t0, dur)
         if rtf is not None:
             batch_rtfs.append(rtf)
@@ -185,7 +185,7 @@ def main():
                 gold = read_gold_transcription(path)
                 entry["text"] = gold or "N/A"
                 if gold:
-                    w = calculate_wer(gold, text)
+                    w = calculate_wer(gold, full_text)
                     entry["wer"] = w
                     total_wer += w; wer_count += 1
                     wer_bar.update(1)
