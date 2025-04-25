@@ -27,8 +27,7 @@ COLOR_CHUNK = "#00ffff"
 COLOR_WER = "#ff00ff"
 
 PROMPT = (
-    "<|user|><|audio_1|>Based on the attached audio, generate a comprehensive text transcription"
-    " of the spoken content.<|end|><|assistant|>"
+    "<|user|><|audio_1|>Transcribe the audio clip into text.<|end|><|assistant|>"
 )
 
 def real_time_factor(processing_time, audio_length, decimals=4):
