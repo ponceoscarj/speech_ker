@@ -60,7 +60,7 @@ def main():
 
     os.makedirs(args.output_dir, exist_ok=True)
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print('Device is set to {device}')
+    print(f'Device is set to {device}')
 
     # Load model
     processor = AutoProcessor.from_pretrained(args.model_path, trust_remote_code=True)
@@ -157,22 +157,25 @@ def main():
                 entry = {"audio_file_path": str(path), "pred_text": transcript}
                 if args.gold_standard:
                     gold = read_gold_transcription(str(path))
+                    entry["text"] = gold or "N/A"
                     if gold:
                         wer = calculate_wer(gold, transcript)
                         total_wer += wer
                         wer_count += 1
                         file_bar.set_postfix({"Avg WER": f"{(total_wer/wer_count):.2%}"})
                         entry["wer"] = wer
+                        tqdm.write(f"📄 {path.name} - WER: {wer:.2%}")                        
                 results.append(entry)
                 file_bar.update(1)
 
     # Save output
     out_base = args.output_filename or f"results_{datetime.now().isoformat()}"
-    res_file = Path(args.output_dir) / f"{out_base}.json"
+    results_file = Path(args.output_dir) / f"{out_base}.json"
     meta_file = Path(args.output_dir) / f"{out_base}_meta.json"
 
-    with open(res_file, "w") as f:
-        json.dump(results, f, indent=2)
+    with open(results_file, "w") as f:
+        for e in results:
+            f.write(json.dumps(e) + "\n")
 
     total_time = time.time() - start_all
     meta = {
@@ -183,7 +186,9 @@ def main():
     }
     with open(meta_file, "w") as f:
         json.dump(meta, f, indent=2)
-
+    
+    print(f"\nResults → {results_file}")
+    print(f"Metadata → {meta_file}")
     print(f"\n✅ Processing complete! RTF: {meta['rtf']:.2f}")
 
 if __name__ == "__main__":
