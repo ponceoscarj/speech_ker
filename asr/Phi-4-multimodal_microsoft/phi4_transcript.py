@@ -60,14 +60,14 @@ def main():
 
     os.makedirs(args.output_dir, exist_ok=True)
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print('Device is set to {device}')
 
     # Load model
     processor = AutoProcessor.from_pretrained(args.model_path, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
         args.model_path,
         trust_remote_code=True,
-        torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
-        attn_implementation="flash_attention_2"
+        torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32
     ).to(device)
 
     model._attn_implementation = "flash_attention_2"
