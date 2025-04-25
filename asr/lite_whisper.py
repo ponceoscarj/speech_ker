@@ -28,6 +28,7 @@ import warnings
 from tqdm import tqdm
 import time
 from transformers import pipeline
+import soundfile as sf
 
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -44,6 +45,10 @@ def read_gold_transcription(audio_path):
 
 def calculate_wer(reference, hypothesis):
     return jiwer.wer(reference, hypothesis)
+  
+def chunk_audio(audio_array, sr, chunk_sec):
+    chunk_size = int(sr * chunk_sec)
+    return [audio_array[i:i + chunk_size] for i in range(0, len(audio_array), chunk_size)]
 
 def main():
     parser = argparse.ArgumentParser(description="Transcribe an audio file.")
@@ -105,34 +110,66 @@ def main():
     total_files = len(audio_arrays)
 
     # ── Transcription Loop ────────────────────────────────────────────────
+
+     files = []
+    for ext in args.extensions:
+        files.extend(Path(args.input_dir).rglob(f"*{ext}"))
+    files = sorted(files)
+    total_files = len(files)
+
     main_bar = tqdm(total=total_files, desc="Transcribing", unit="file")
     wer_bar = tqdm(total=total_files, desc="WER_Calc", leave=False)
     results, batch_rtfs = [], []
     total_wer, wer_count = 0, 0
     start_all = time.time()
 
-    for i in range(0, total_files, args.batch_sizes):
-        batch_arrs = audio_arrays[i:i+args.batch_sizes]
-        batch_paths = audio_paths[i:i+args.batch_sizes]
-        main_bar.set_postfix(file=Path(batch_paths[0]).name)
+    for batch_start in range(0, total_files, args.batch_sizes):
+      batch_files = files[batch_start:batch_start + args.batch_sizes]
+      chunks_by_file = {}
+      srs = {}
+
+    # Read and chunk all files in batch
+    for path in batch_files:
+        audio, sr = sf.read(path)
+        srs[path] = sr
+        duration = len(audio) / sr
+        total_audio_duration += duration
+        chunk_len = int(args.chunk_lengths * sr)
+        chunks = [audio[i:i+chunk_len] for i in range(0, len(audio), chunk_len)]
+        chunks_by_file[path] = chunks
+
+    max_rounds = max(len(chunks) for chunks in chunks_by_file.values())
+    batch_texts = {path: [] for path in batch_files}
   
+     with tqdm(total=max_rounds, desc="🔊 Chunk rounds", leave=False) as chunk_round_bar:
+        for i in range(max_rounds):
+            to_process = []
+            paths_order = []
+            for path in batch_files:
+                if i < len(chunks_by_file[path]):
+                    to_process.append(chunks_by_file[path][i])
+                    paths_order.append(path)
+                  
         t0 = time.time()
-        chunk_size = args.chunk_lengths * 16000  # 30s chunks
-        texts = []
+       inputs = processor(
+                to_process,
+                sampling_rate=16000,
+                return_tensors="pt",
+                padding=True
+            ).to(device)
 
-        for arr in batch_arrs:
-          audio_chunks = [arr[i:i+chunk_size] for i in range(0, len(arr), chunk_size)]
-          full_transcript = ""
-          for chunk in audio_chunks:
-            input_feats = processor(chunk, sampling_rate=16000, return_tensors="pt").input_features.to(device).to(dtype)
-            with torch.inference_mode():
-              pred_ids = model.generate(input_feats, forced_decoder_ids=forced_decoder_ids)
-            chunk_text = processor.batch_decode(pred_ids, skip_special_tokens=True)[0]
-            full_transcript += " " + chunk_text
-          texts.append(full_transcript.strip())
-  
-        t1 = time.time()
+            with torch.inference_mode(), torch.cuda.amp.autocast():
+                pred_ids = model.generate(
+                    inputs.input_features,
+                    forced_decoder_ids=forced_decoder_ids
+                )
 
+            outputs = processor.batch_decode(pred_ids, skip_special_tokens=True)
+            t1 = time.time()
+
+            for path, text in zip(paths_order, outputs):
+                batch_texts[path].append(text.strip())
+              
         # compute RTF
         dur = sum(len(a)/16000 for a in batch_arrs)
         rtf = real_time_factor(t1-t0, dur)
@@ -141,8 +178,9 @@ def main():
         print(f"Batch {(i//args.batch_sizes)+1}: RTF={rtf:.4f}")
 
         # collect results + WER
-        for path, text in zip(batch_paths, texts):
-            entry = {"audio_file_path": path, "pred_text": text}
+        for path in batch_files:
+          full_text = " ".join(batch_texts[path])
+          entry = {"audio_file_path": str(path), "pred_text": full_text}
             if args.gold_standard:
                 gold = read_gold_transcription(path)
                 entry["text"] = gold or "N/A"
