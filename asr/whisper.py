@@ -96,7 +96,7 @@ def main():
           model.generation_config.language = "en"
           model.generation_config.task = "transcribe"
 
-        model = torch.compile(model)
+        # model = torch.compile(model)
         processor = AutoProcessor.from_pretrained(args.model)
         bar.update(1)
 
