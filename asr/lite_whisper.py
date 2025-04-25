@@ -104,14 +104,13 @@ def main():
         ds = ds.cast_column("audio", Audio(sampling_rate=16000))
         bar.update(1)
 
-    audio_paths = [x["audio"]["path"] for x in ds]
-    audio_arrays = [x["audio"]["array"] for x in ds]
+   
     total_audio_duration = sum(len(a)/16000 for a in audio_arrays)
     total_files = len(audio_arrays)
 
     # ── Transcription Loop ────────────────────────────────────────────────
 
-     files = []
+    files = []
     for ext in args.extensions:
         files.extend(Path(args.input_dir).rglob(f"*{ext}"))
     files = sorted(files)
@@ -124,45 +123,45 @@ def main():
     start_all = time.time()
 
     for batch_start in range(0, total_files, args.batch_sizes):
-      batch_files = files[batch_start:batch_start + args.batch_sizes]
-      chunks_by_file = {}
-      srs = {}
+        batch_files = files[batch_start:batch_start + args.batch_sizes]
+        chunks_by_file = {}
+        srs = {}
 
-    # Read and chunk all files in batch
-    for path in batch_files:
-        audio, sr = sf.read(path)
-        srs[path] = sr
-        duration = len(audio) / sr
-        total_audio_duration += duration
-        chunk_len = int(args.chunk_lengths * sr)
-        chunks = [audio[i:i+chunk_len] for i in range(0, len(audio), chunk_len)]
-        chunks_by_file[path] = chunks
+      # Read and chunk all files in batch
+        for path in batch_files:
+            audio, sr = sf.read(path)
+            srs[path] = sr
+            duration = len(audio) / sr
+            total_audio_duration += duration
+            chunk_len = int(args.chunk_lengths * sr)
+            chunks = [audio[i:i+chunk_len] for i in range(0, len(audio), chunk_len)]
+            chunks_by_file[path] = chunks
 
     max_rounds = max(len(chunks) for chunks in chunks_by_file.values())
     batch_texts = {path: [] for path in batch_files}
   
     with tqdm(total=max_rounds, desc="🔊 Chunk rounds", leave=False) as chunk_round_bar:
-      for i in range(max_rounds):
-        to_process = []
-        paths_order = []
-        for path in batch_files:
-          if i < len(chunks_by_file[path]):
-            to_process.append(chunks_by_file[path][i])
-            paths_order.append(path)
+       for round_idx in range(max_rounds):
+            to_process = []
+            paths_order = []
+            for path in batch_files:
+                if round_idx < len(chunks_by_file[path]):
+                    to_process.append(chunks_by_file[path][round_idx])
+                    paths_order.append(path)
                   
         t0 = time.time()
-       inputs = processor(
-                to_process,
-                sampling_rate=16000,
-                return_tensors="pt",
-                padding=True
-            ).to(device)
+        inputs = processor(
+            to_process,
+            sampling_rate=16000,
+            return_tensors="pt",
+            padding=True
+          ).to(device)
 
-            with torch.inference_mode(), torch.cuda.amp.autocast():
-                pred_ids = model.generate(
-                    inputs.input_features,
-                    forced_decoder_ids=forced_decoder_ids
-                )
+          with torch.inference_mode(), torch.cuda.amp.autocast():
+            pred_ids = model.generate(
+              inputs.input_features,
+              forced_decoder_ids=forced_decoder_ids
+            )
 
             outputs = processor.batch_decode(pred_ids, skip_special_tokens=True)
             t1 = time.time()
@@ -175,22 +174,25 @@ def main():
         rtf = real_time_factor(t1-t0, dur)
         if rtf is not None:
             batch_rtfs.append(rtf)
-        print(f"Batch {(i//args.batch_sizes)+1}: RTF={rtf:.4f}")
+          
+        print(f"Batch {(batch_start // args.batch_sizes) + 1}, Round {round_idx + 1}: RTF={rtf:.4f}")
+        chunk_round_bar.update(1)
 
         # collect results + WER
-        for path in batch_files:
+      for path in batch_files:
           full_text = " ".join(batch_texts[path])
           entry = {"audio_file_path": str(path), "pred_text": full_text}
-            if args.gold_standard:
-                gold = read_gold_transcription(path)
-                entry["text"] = gold or "N/A"
-                if gold:
-                    w = calculate_wer(gold, full_text)
-                    entry["wer"] = w
-                    total_wer += w; wer_count += 1
-                    wer_bar.update(1)
-            results.append(entry)
-            main_bar.update(1)
+          if args.gold_standard:
+            gold = read_gold_transcription(path)
+            entry["text"] = gold or "N/A"
+            if gold:
+              w = calculate_wer(gold, full_text)
+              entry["wer"] = w
+              total_wer += w; wer_count += 1
+              wer_bar.update(1)
+              
+          results.append(entry)
+          main_bar.update(1)
 
         if args.sleep_time>0:
             time.sleep(args.sleep_time)
