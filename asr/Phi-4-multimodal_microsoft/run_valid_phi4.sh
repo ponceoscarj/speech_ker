@@ -34,8 +34,7 @@ readonly DEFAULT_SLEEP=2
 # ==============================================================================
 # Initialize variables with default values
 # ==============================================================================
-main_model=""
-processor_model=""
+model=""
 input_dir=""
 output_base_dir="$DEFAULT_OUTPUT"
 chunk_lengths=("${DEFAULT_CHUNKS[@]}")
@@ -52,8 +51,7 @@ show_help() {
 Usage: $0 [options]
 
 Mandatory Parameters:
-  -m, --main_model MODEL            Path to model directory or Hugging Face model name
-  -p, --processor_model MODEL       Path to model processor
+  -m, --model MODEL            Path to model directory or Hugging Face model name
   -i, --input-dir INPUT_DIR         Directory containing audio files
 
 Optional Parameters:
@@ -113,8 +111,8 @@ validate_timestamp() {
 # ==============================================================================
 parse_parameters() {
     local parsed_args
-    parsed_args=$(getopt -o m:p:i:o:c:b:t:e:s:h \
-                --long main_model:,processor_model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
+    parsed_args=$(getopt -o m:i:o:c:b:t:e:s:h \
+                --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
                 -n "$0" -- "$@") || { show_help; exit 1; }
     # parsed_args=$(/usr/local/opt/gnu-getopt/bin/getopt \
     # -o m:i:o:c:b:t:e:s:h \
@@ -125,11 +123,8 @@ parse_parameters() {
 
     while true; do
         case "$1" in
-            -m|--main_model)
-                main_model="$2"
-                shift 2 ;;
-            -p|--processor_model)
-                processor_model="$2"
+            -m|--model)
+                model="$2"
                 shift 2 ;;
             -i|--input-dir)
                 input_dir="$(realpath "$2")"  # Use realpath for absolute paths
@@ -164,7 +159,7 @@ parse_parameters() {
     done
 
     # Validate mandatory parameters
-    [[ -z "${main_model}" ]] && { echo "ERROR: Missing --main_model"; exit 1; }
+    [[ -z "${model}" ]] && { echo "ERROR: Missing --model"; exit 1; }
     [[ -z "${input_dir}" ]] && { echo "ERROR: Missing --input-dir"; exit 1; }
 }
 
@@ -173,8 +168,8 @@ parse_parameters() {
 # ==============================================================================
 create_experiment_dir() {
 
-    model="${main_model%/}"  # Remove trailing slash (if present)
-    local model_dir_name=$(basename "${main_model}")  # Extract only the directory name    
+    model="${model%/}"  # Remove trailing slash (if present)
+    local model_dir_name=$(basename "${model}")  # Extract only the directory name    
     local experiment_dir="${output_base_dir}/${model_dir_name}"
     
     mkdir -p "${experiment_dir}" || {
@@ -189,7 +184,7 @@ initialize_log_file() {
     cat <<EOF > "${log_path}"
 === Experiment Parameters ===
 Start Time:    $(date +'%Y-%m-%d %H:%M:%S')
-Model:         ${main_model}
+Model:         ${model}
 Input Dir:     ${input_dir}
 Chunk Lengths: "${chunk_lengths[*]}"
 Batch Sizes:   "${batch_sizes[*]}"
@@ -231,8 +226,7 @@ run_experiment() {
             --input_dir "${input_dir}" \
             --output_dir "${experiment_dir}" \
             --output_filename "${output_filename}" \
-            --main_model "${main_model}" \
-            --processor_model "${processor_model}" \
+            --model_path "${model}" \
             --chunk-lengths "${chunk_len}" \
             --batch-sizes "${batch_size}" \
             --timestamp "${timestamp}" \
@@ -266,7 +260,7 @@ main() {
     local total_configs=$((${#batch_sizes[@]} * ${#chunk_lengths[@]}))
     
     echo -e "\n=== Starting Experiment Series ==="
-    echo "Model:          ${main_model}"
+    echo "Model:          ${model}"
     echo "Input Directory: ${input_dir}"
     echo "Output Directory: ${experiment_dir}"
     echo "Timestamp Type: ${timestamp}"
