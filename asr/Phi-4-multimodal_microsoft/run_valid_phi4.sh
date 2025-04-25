@@ -229,7 +229,6 @@ run_experiment() {
             --model_path "${model}" \
             --chunk-lengths "${chunk_len}" \
             --batch-sizes "${batch_size}" \
-            --timestamp "${timestamp}" \
             --extensions "${extensions}" \
             --gold_standard || {
                 echo "ERROR: Transcription failed for chunk ${chunk_len}, batch ${batch_size}"

@@ -43,6 +43,8 @@ def main():
     parser.add_argument("--input_dir", type=str, required=True, help="Directory with audio files")
     parser.add_argument("--output_dir", type=str, default="transcripts", help="Where to save transcripts")
     parser.add_argument("--model_path", type=str, required=True, help="Path to Phi-4-multimodal model")
+    parser.add_argument("--output_filename", type=str, default="",
+                        help="Custom base name for output JSON file (optional)")
     parser.add_argument("--generation_config", type=str, default="generation_config.json", help="Generation config JSON")
     parser.add_argument("--chunk_lengths", type=int, default=30, help="Seconds per chunk")
     parser.add_argument("--batch_sizes", type=int, default=1, help="Number of files to process in parallel")
@@ -154,8 +156,7 @@ def main():
     overall_rtf = real_time_factor(total_time, total_audio_duration)
 
     # Save outputs
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_base = f"phi4_results_{timestamp}"
+    out_base = args.output_filename or f"results_{datetime.now().isoformat()}"
     res_file = Path(args.output_dir) / f"{out_base}.json"
     meta_file = Path(args.output_dir) / f"{out_base}_meta.json"
 
