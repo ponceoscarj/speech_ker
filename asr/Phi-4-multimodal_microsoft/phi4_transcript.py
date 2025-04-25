@@ -62,13 +62,16 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Load model
-    processor = AutoProcessor.from_pretrained(args.model_path, trust_remote_code=True, use_fast=True)
+    processor = AutoProcessor.from_pretrained(args.model_path, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
         args.model_path,
         trust_remote_code=True,
         torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
         attn_implementation="flash_attention_2"
     ).to(device)
+
+    model._attn_implementation = "flash_attention_2"
+
     generation_config = GenerationConfig.from_pretrained(args.model_path, args.generation_config)
 
     # Gather files
