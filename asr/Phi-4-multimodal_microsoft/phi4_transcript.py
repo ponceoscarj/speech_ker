@@ -4,7 +4,6 @@ import os
 import time
 from datetime import datetime
 from pathlib import Path
-import math
 
 import torch
 import soundfile as sf
@@ -26,22 +25,26 @@ def real_time_factor(processing_time, audio_length, decimals=4):
 
 
 def read_gold_transcription(audio_path):
-    txt = Path(audio_path).with_suffix('.txt')
-    return txt.read_text().strip() if txt.exists() else None
+    txt_path = Path(audio_path).with_suffix('.txt')
+    return txt_path.read_text().strip() if txt_path.exists() else None
 
 
 def calculate_wer(reference, hypothesis):
     return jiwer.wer(reference, hypothesis)
 
 
+def chunk_audio(array, sample_rate, chunk_sec):
+    chunk_size = int(chunk_sec * sample_rate)
+    return [array[i : i + chunk_size] for i in range(0, len(array), chunk_size)]
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Transcribe audio using Phi-4-multimodal with acoustic context, chunking, and batching.")
+    parser = argparse.ArgumentParser(description="Transcribe audio using Phi-4-multimodal with chunking and batching.")
     parser.add_argument("--input_dir", type=str, required=True, help="Directory with audio files")
     parser.add_argument("--output_dir", type=str, default="transcripts", help="Where to save transcripts")
     parser.add_argument("--model_path", type=str, required=True, help="Path to Phi-4-multimodal model")
     parser.add_argument("--generation_config", type=str, default="generation_config.json", help="Generation config JSON")
     parser.add_argument("--chunk_lengths", type=int, default=30, help="Seconds per chunk")
-    parser.add_argument("--context_length", type=int, default=0, help="Seconds of acoustic context to prepend to each chunk")
     parser.add_argument("--batch_sizes", type=int, default=1, help="Number of files to process in parallel")
     parser.add_argument("--extensions", nargs="+", default=[".wav", ".mp3", ".flac"], help="Audio file extensions to include")
     parser.add_argument("--gold_standard", action="store_true", default=False, help="Compute WER if gold .txt present")
@@ -51,13 +54,16 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Load processor & model
-    processor = AutoProcessor.from_pretrained(args.model_path, trust_remote_code=True)
+    processor = AutoProcessor.from_pretrained(args.model_path, trust_remote_code=True, use_fast=True)
     model = AutoModelForCausalLM.from_pretrained(
         args.model_path,
         trust_remote_code=True,
         torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
-        _attn_implementation="flash_attention_2"
+        _attn_implementation=None
     ).to(device)
+
+    model._attn_implementation = "flash_attention_2"
+
     generation_config = GenerationConfig.from_pretrained(args.model_path, args.generation_config)
 
     # Gather audio file paths
@@ -88,24 +94,17 @@ def main():
             total_audio_duration += len(audio_array) / sr
             batch_duration += len(audio_array) / sr
 
-            chunk_samples = args.chunk_lengths * sr
-            context_samples = args.context_length * sr
-            num_chunks = math.ceil(len(audio_array) / chunk_samples)
-
+            # Chunk audio into fixed lengths
+            chunks = chunk_audio(audio_array, sr, args.chunk_lengths)
             transcript_parts = []
-            for idx in range(num_chunks):
-                start = idx * chunk_samples
-                end = min(len(audio_array), start + chunk_samples)
-                # prepend acoustic context from previous audio
-                context_start = max(0, start - context_samples)
-                audio_in = audio_array[context_start:end]
-
+            for chunk in chunks:
                 prompt = (
-                    "<|user|><|audio_1|>Transcribe the audio clip into text.<|end|><|assistant|>"
+                    "<|user|><|audio_1|>Based on the attached audio, generate a comprehensive text transcription"
+                    " of the spoken content.<|end|><|assistant|>"
                 )
                 inputs = processor(
                     text=prompt,
-                    audios=[(audio_in, sr)],
+                    audios=[(chunk, sr)],
                     return_tensors="pt"
                 ).to(device)
                 with torch.inference_mode():
@@ -114,8 +113,8 @@ def main():
                         generation_config=generation_config,
                         max_new_tokens=1200
                     )
-                # strip prompt tokens
-                out_ids = gen_ids[:, inputs["input_ids"].shape[1]:]
+                # Remove prompt tokens
+                out_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
                 text = processor.batch_decode(
                     out_ids,
                     skip_special_tokens=True,
