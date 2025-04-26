@@ -6,8 +6,8 @@
 # This script automates running buffered RNNT inference experiments with various 
 # configurations and calculates Word Error Rate (WER).
 # ==============================================================================#
-set -eo pipefail  # Enable strict error checking
-trap "echo -e '\nError: Script aborted due to error'; exit 1" ERR
+# set -eo pipefail  # Enable strict error checking
+# trap "echo -e '\nError: Script aborted due to error'; exit 1" ERR
 
 # Example Usage:
 # bash run_nemo_buffered.sh --model-path /path/to/model.nemo \
