@@ -21,8 +21,9 @@
 # ==============================================================================
 readonly DEFAULT_PRETRAINED=""
 readonly DEFAULT_OUTPUT="./results"
-readonly DEFAULT_CHUNK_LENS=(1.6 2.0)
-readonly DEFAULT_BATCH_SIZES=(32 16)
+readonly DEFAULT_CHUNK_LENS=(20 40 60 80)
+readonly DEFAULT_CONTEXTS=(3 5 7 10 15 20 30 40)
+readonly DEFAULT_BATCH_SIZES=8
 readonly DEFAULT_MODEL_STRIDE=4
 readonly DEFAULT_SLEEP=2
 
@@ -34,7 +35,8 @@ dataset_manifest=""
 pretrained_name="$DEFAULT_PRETRAINED"
 output_base_dir="$DEFAULT_OUTPUT"
 chunk_lens=("${DEFAULT_CHUNK_LENS[@]}")
-batch_sizes=("${DEFAULT_BATCH_SIZES[@]}")
+contexts=("${DEFAULT_CONTEXTS[@]}")
+batch_size="$DEFAULT_BATCH_SIZE"
 model_stride="$DEFAULT_MODEL_STRIDE"
 sleep_time="$DEFAULT_SLEEP"
 
@@ -54,7 +56,8 @@ Optional Parameters:
   -p, --pretrained-name NAME         Pretrained model name (default: $DEFAULT_PRETRAINED)
   -o, --output-dir OUTPUT_DIR        Base output directory (default: $DEFAULT_OUTPUT)
   -c, --chunk-lengths LENGTHS        Space-separated chunk lengths in seconds (default: "${DEFAULT_CHUNK_LENS[@]}")
-  -b, --batch-sizes SIZES            Space-separated batch sizes (default: "${DEFAULT_BATCH_SIZES[@]}")
+  -x, --contexts CONTEXTS            Space-separated context sizes in seconds (default: "${DEFAULT_CONTEXTS[@]}")
+  -b, --batch-size SIZE              Batch size (default: $DEFAULT_BATCH_SIZE)
   -r, --model-stride STRIDE          Model stride factor (default: $DEFAULT_MODEL_STRIDE)
   -s, --sleep-time SECONDS           Sleep between runs (default: $DEFAULT_SLEEP)
   -h, --help                         Show this help message
@@ -96,8 +99,8 @@ validate_positive_integer() {
 # ==============================================================================
 parse_parameters() {
     local parsed_args
-    parsed_args=$(getopt -o m:d:p:o:c:b:r:s:h \
-                --long model-path:,dataset-manifest:,pretrained-name:,output-dir:,chunk-lengths:,batch-sizes:,model-stride:,sleep-time:,help \
+    parsed_args=$(getopt -o m:d:p:o:c:x:b:r:s:h \
+                --long model-path:,dataset-manifest:,pretrained-name:,output-dir:,chunk-lengths:,contexts:,batch-sizes:,model-stride:,sleep-time:,help \
                 -n "$0" -- "$@") || { show_help; exit 1; }
 
     eval set -- "${parsed_args}"
@@ -126,6 +129,12 @@ parse_parameters() {
                     validate_positive_number "${chunk}" "Chunk length"
                 done
                 shift 2 ;;
+            -x|--contexts)
+                IFS=' ' read -r -a contexts <<< "$(echo "$2" | xargs)"
+                for ctx in "${contexts[@]}"; do
+                    validate_positive_number "$ctx" "Context"
+                done
+                shift 2 ;;                
             -b|--batch-sizes)
                 local trimmed_batches
                 trimmed_batches=$(echo "$2" | xargs)
@@ -180,14 +189,18 @@ create_experiment_dir() {
 initialize_log_file() {
     local log_path="$1"
     local chunk_len="$2"
-    local batch_size="$3"
+    local context="$3"
+    local total_buffer=$(bc <<< "$chunk_len + $context")
+    local batch_size="$4"
     cat <<EOF > "${log_path}"
 === Experiment Parameters ===
 Start Time:             $(date +'%Y-%m-%d %H:%M:%S')
 Model Path:             ${model_path}
 Pretrained:             ${pretrained_name}
 Dataset:                ${dataset_manifest}
-Buffer/Chunk Length:    ${chunk_len}s
+Chunk Length:           ${chunk_len}s
+Context:                ${context}s
+Total Buffer:           ${total_buffer}s
 Batch Size:             ${batch_size}
 Model Stride:           ${model_stride}
 Sleep Time:             ${sleep_time}s
@@ -202,23 +215,27 @@ run_experiment() {
     local chunk_len="$1"
     local batch_size="$2"
     local experiment_dir="$3"
+    local total_buffer=$(bc <<< "$chunk_len + $context")    
     local model_dir_name=$(basename "${experiment_dir}")
     local timestamp=$(date +'%Y%m%d_%H%M%S')
 
     # Sanitize float values for filenames
     local chunk_len_sanitized="${chunk_len//./_}"
+    local context_sanitized="${context//./_}"    
     
     local log_filename="${model_dir_name}_buffer${chunk_len_sanitized}_chunk${chunk_len_sanitized}_batch${batch_size}.log"
     local log_file="${experiment_dir}/${log_filename}"
     local output_file="${experiment_dir}/${model_dir_name}_buffer${chunk_len_sanitized}_chunk${chunk_len_sanitized}_batch${batch_size}.json"
 
     echo "Running configuration:"
-    echo "  - Buffer/Chunk Length: ${chunk_len}s"
-    echo "  - Batch Size: ${batch_size}"
-    echo "  - Log file: ${log_filename}"
+    echo "  - Buffer Length:    ${total_buffer}s"
+    echo "  - Chunk Length:     ${chunk_len}s"
+    echo "  - Context Length:   ${context}s"     
+    echo "  - Batch Size:   ${batch_size}"
+    echo "  - Log file:     ${log_filename}"
     
     # Initialize log with header
-    initialize_log_file "${log_file}" "${chunk_len}" "${batch_size}"
+    initialize_log_file "${log_file}" "${chunk_len}" "${context}"
 
     {
         echo -e "\n=== Starting Transcription ===\n"
@@ -227,12 +244,12 @@ run_experiment() {
             pretrained_name="${pretrained_name}" \
             dataset_manifest="${dataset_manifest}" \
             output_filename="${output_file}" \
-            total_buffer_in_secs="${chunk_len}" \
+            total_buffer_in_secs="${total_buffer}" \
             chunk_len_in_secs="${chunk_len}" \
             model_stride="${model_stride}" \
             batch_size="${batch_size}" \
             langid='en' || {
-                echo "ERROR: Transcription failed for chunk ${chunk_len}, batch ${batch_size}"
+                echo "ERROR: Transcription failed for chunk ${chunk_len}, context ${context}"
                 exit 1
             }
 
@@ -261,21 +278,20 @@ main() {
     local total_configs=$((${#chunk_lens[@]} * ${#batch_sizes[@]}))
     
     echo -e "\n=== Starting Experiment Series ==="
-    echo "Model:          ${pretrained_name}"
-    echo "Output Directory: ${experiment_dir}"
+    echo "Model:                ${pretrained_name}"
+    echo "Output Directory:     ${experiment_dir}"
     echo "Total Configurations: ${total_configs}"
     echo "----------------------------------------"
 
     local count=1
-    for chunk_len in "${chunk_lens[@]}"; do
-        validate_positive_number "${chunk_len}" "Chunk length"
-        for batch_size in "${batch_sizes[@]}"; do
-            validate_positive_integer "${batch_size}" "Batch size"
-            echo -e "\n=== Processing Configuration ${count}/${total_configs} ==="
-            run_experiment "${chunk_len}" "${batch_size}" "${experiment_dir}"
+    for chunk in "${chunk_lens[@]}"; do
+        for ctx in "${contexts[@]}"; do
+            echo -e "\n=== Configuration $count/$total_configs ==="
+            run_experiment "$chunk" "$ctx" "$experiment_dir"
             ((count++))
         done
     done
+
 
     echo -e "\n=== All Experiments Completed ==="
     echo "Final results available in: ${experiment_dir}"
