@@ -243,7 +243,7 @@ run_experiment() {
 
     {
         echo -e "\n=== Starting Transcription ===\n"
-        python3 nemo_buffered_infer_rnnt.py \
+        python3 nemo_buffered_infer_ctc.py \
             model_path="${model_path}" \
             pretrained_name="${pretrained_name}" \
             dataset_manifest="${dataset_manifest}" \
