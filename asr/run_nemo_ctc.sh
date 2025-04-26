@@ -208,9 +208,9 @@ run_experiment() {
     # Sanitize float values for filenames
     local chunk_len_sanitized="${chunk_len//./_}"
     
-    local log_filename="${model_dir_name}_buffer${total_buffer_sanitized}_chunk${chunk_len_sanitized}_batch${batch_size}.log"
+    local log_filename="${model_dir_name}_buffer${chunk_len_sanitized}_chunk${chunk_len_sanitized}_batch${batch_size}.log"
     local log_file="${experiment_dir}/${log_filename}"
-    local output_file="${experiment_dir}/${model_dir_name}_buffer${total_buffer_sanitized}_chunk${chunk_len_sanitized}_batch${batch_size}.json"
+    local output_file="${experiment_dir}/${model_dir_name}_buffer${chunk_len_sanitized}_chunk${chunk_len_sanitized}_batch${batch_size}.json"
 
     echo "Running configuration:"
     echo "  - Buffer/Chunk Length: ${chunk_len}s"
@@ -227,7 +227,7 @@ run_experiment() {
             pretrained_name="${pretrained_name}" \
             dataset_manifest="${dataset_manifest}" \
             output_filename="${output_file}" \
-            total_buffer_in_secs="${total_buffer}" \
+            total_buffer_in_secs="${chunk_len}" \
             chunk_len_in_secs="${chunk_len}" \
             model_stride="${model_stride}" \
             batch_size="${batch_size}" \
@@ -258,7 +258,7 @@ main() {
     echo "=== Parameters parsed ==="
         
     local experiment_dir=$(create_experiment_dir)
-    local total_configs=$((${#total_buffers[@]} * ${#chunk_lens[@]} * ${#batch_sizes[@]}))
+    local total_configs=$((${#chunk_lens[@]} * ${#batch_sizes[@]}))
     
     echo -e "\n=== Starting Experiment Series ==="
     echo "Model:          ${pretrained_name}"
