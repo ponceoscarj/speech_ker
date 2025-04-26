@@ -21,14 +21,12 @@ This script serves three goals:
 python speech_to_text_buffered_infer_ctc.py \
     model_path=null \
     pretrained_name=null \
-    audio_dir="<remove or path to folder of audio files>" \
     dataset_manifest="<remove or path to manifest>" \
     output_filename="<remove or specify output filename>" \
     total_buffer_in_secs=4.0 \
     chunk_len_in_secs=1.6 \
     model_stride=4 \
     batch_size=32 \
-    clean_groundtruth_text=True \
     langid='en'
 
 # NOTE:
