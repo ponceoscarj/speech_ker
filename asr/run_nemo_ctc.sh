@@ -5,8 +5,8 @@
 # ==============================================================================
 # This script automates running buffered RNNT inference experiments with various 
 # configurations and calculates Word Error Rate (WER).
-# ==============================================================================
-set -x
+# ==============================================================================#
+#set -x
 # set -eo pipefail  # Exit on error and pipe failures
 
 # Example Usage:
