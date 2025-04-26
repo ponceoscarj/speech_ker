@@ -78,7 +78,7 @@ validate_positive_number() {
     local value="$1"
     local name="$2"
     
-    if ! [[ "${value}" =~ ^[0-9]+([.][0-9]+)?$ ]] || ! (( $(echo "$value > 0" | bc -l) )); then 
+    if ! [[ "${value}" =~ ^[0-9]+([.][0-9]+)?$ ]] || ! (( $(echo "$value >= 0" | bc -l) )); then 
         echo "ERROR: ${name} must be a positive number, got '${value}'"
         exit 1
     fi

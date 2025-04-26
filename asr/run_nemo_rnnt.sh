@@ -11,7 +11,8 @@ set -eo pipefail  # Exit on error and pipe failures
 
 # Example Usage:
 # bash run_nemo_buffered.sh --model-path /path/to/model.nemo \
-#     --dataset-manifest /path/to/manifest.json --output-dir /output \
+#     --dataset-manifest /path/to/manifest.json 
+#     --output-dir /output \
 #     --total-buffers "4.0 6.0" --chunk-lengths "1.6 2.0" --batch-sizes "32 16" \
 #     --model-stride 4 --merge-algo "lcs"
 
@@ -80,7 +81,7 @@ validate_positive_number() {
     local value="$1"
     local name="$2"
     
-    if ! [[ "${value}" =~ ^[0-9]+([.][0-9]+)?$ ]] || ! (( $(echo "$value > 0" | bc -l) )); then 
+    if ! [[ "${value}" =~ ^[0-9]+([.][0-9]+)?$ ]] || ! (( $(echo "$value >= 0" | bc -l) )); then 
         echo "ERROR: ${name} must be a positive number, got '${value}'"
         exit 1
     fi
