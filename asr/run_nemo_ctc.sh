@@ -19,9 +19,8 @@
 # ==============================================================================
 # Global Configuration and Defaults
 # ==============================================================================
-readonly DEFAULT_PRETRAINED="nvidia/canary-1b-flash"
+readonly DEFAULT_PRETRAINED=""
 readonly DEFAULT_OUTPUT="./results"
-readonly DEFAULT_TOTAL_BUFFERS=(4.0 6.0)
 readonly DEFAULT_CHUNK_LENS=(1.6 2.0)
 readonly DEFAULT_BATCH_SIZES=(32 16)
 readonly DEFAULT_MODEL_STRIDE=4
@@ -34,7 +33,6 @@ model_path=""
 dataset_manifest=""
 pretrained_name="$DEFAULT_PRETRAINED"
 output_base_dir="$DEFAULT_OUTPUT"
-total_buffers=("${DEFAULT_TOTAL_BUFFERS[@]}")
 chunk_lens=("${DEFAULT_CHUNK_LENS[@]}")
 batch_sizes=("${DEFAULT_BATCH_SIZES[@]}")
 model_stride="$DEFAULT_MODEL_STRIDE"
@@ -55,7 +53,6 @@ Mandatory Parameters:
 Optional Parameters:
   -p, --pretrained-name NAME         Pretrained model name (default: $DEFAULT_PRETRAINED)
   -o, --output-dir OUTPUT_DIR        Base output directory (default: $DEFAULT_OUTPUT)
-  -t, --total-buffers BUFFERS        Space-separated total buffer sizes in seconds (default: "${DEFAULT_TOTAL_BUFFERS[@]}"). Length of buffer (chunk + left and right padding) in seconds.
   -c, --chunk-lengths LENGTHS        Space-separated chunk lengths in seconds (default: "${DEFAULT_CHUNK_LENS[@]}")
   -b, --batch-sizes SIZES            Space-separated batch sizes (default: "${DEFAULT_BATCH_SIZES[@]}")
   -r, --model-stride STRIDE          Model stride factor (default: $DEFAULT_MODEL_STRIDE)
@@ -99,8 +96,8 @@ validate_positive_integer() {
 # ==============================================================================
 parse_parameters() {
     local parsed_args
-    parsed_args=$(getopt -o m:d:p:o:t:c:b:r:s:h \
-                --long model-path:,dataset-manifest:,pretrained-name:,output-dir:,total-buffers:,chunk-lengths:,batch-sizes:,model-stride:,sleep-time:,help \
+    parsed_args=$(getopt -o m:d:p:o:c:b:r:s:h \
+                --long model-path:,dataset-manifest:,pretrained-name:,output-dir:,chunk-lengths:,batch-sizes:,model-stride:,sleep-time:,help \
                 -n "$0" -- "$@") || { show_help; exit 1; }
 
     eval set -- "${parsed_args}"
@@ -120,14 +117,6 @@ parse_parameters() {
                 shift 2 ;;
             -o|--output-dir)
                 output_base_dir="$2"
-                shift 2 ;;
-            -t|--total-buffers)
-                local trimmed_buffers
-                trimmed_buffers=$(echo "$2" | xargs)
-                IFS=' ' read -r -a total_buffers <<< "$trimmed_buffers"
-                for buf in "${total_buffers[@]}"; do
-                    validate_positive_number "${buf}" "Total buffer"
-                done
                 shift 2 ;;
             -c|--chunk-lengths)
                 local trimmed_chunks
@@ -164,11 +153,6 @@ parse_parameters() {
     [[ -z "${dataset_manifest}" ]] && { echo "ERROR: Missing --dataset-manifest"; exit 1; }
 
     # Validate array parameters
-    if [[ ${#total_buffers[@]} -eq 0 ]]; then
-        echo "ERROR: No total buffers specified"
-        exit 1
-    fi
-
     if [[ ${#chunk_lens[@]} -eq 0 ]]; then
         echo "ERROR: No chunk lengths specified"
         exit 1
@@ -195,20 +179,18 @@ create_experiment_dir() {
 
 initialize_log_file() {
     local log_path="$1"
-    local total_buffer="$2"
-    local chunk_len="$3"
-    local batch_size="$4"
+    local chunk_len="$2"
+    local batch_size="$3"
     cat <<EOF > "${log_path}"
 === Experiment Parameters ===
-Start Time:    $(date +'%Y-%m-%d %H:%M:%S')
-Model Path:    ${model_path}
-Pretrained:    ${pretrained_name}
-Dataset:       ${dataset_manifest}
-Total Buffer:  ${total_buffer}s
-Chunk Length:  ${chunk_len}s
-Batch Size:    ${batch_size}
-Model Stride:  ${model_stride}
-Sleep Time:    ${sleep_time}s
+Start Time:             $(date +'%Y-%m-%d %H:%M:%S')
+Model Path:             ${model_path}
+Pretrained:             ${pretrained_name}
+Dataset:                ${dataset_manifest}
+Buffer/Chunk Length:    ${chunk_len}s
+Batch Size:             ${batch_size}
+Model Stride:           ${model_stride}
+Sleep Time:             ${sleep_time}s
 =============================
 EOF
 }
@@ -217,15 +199,13 @@ EOF
 # Experiment Execution
 # ==============================================================================
 run_experiment() {
-    local total_buffer="$1"
-    local chunk_len="$2"
-    local batch_size="$3"
-    local experiment_dir="$4"
+    local chunk_len="$1"
+    local batch_size="$2"
+    local experiment_dir="$3"
     local model_dir_name=$(basename "${experiment_dir}")
     local timestamp=$(date +'%Y%m%d_%H%M%S')
 
     # Sanitize float values for filenames
-    local total_buffer_sanitized="${total_buffer//./_}"
     local chunk_len_sanitized="${chunk_len//./_}"
     
     local log_filename="${model_dir_name}_buffer${total_buffer_sanitized}_chunk${chunk_len_sanitized}_batch${batch_size}.log"
@@ -233,13 +213,12 @@ run_experiment() {
     local output_file="${experiment_dir}/${model_dir_name}_buffer${total_buffer_sanitized}_chunk${chunk_len_sanitized}_batch${batch_size}.json"
 
     echo "Running configuration:"
-    echo "  - Total Buffer: ${total_buffer}s"
-    echo "  - Chunk Length: ${chunk_len}s"
+    echo "  - Buffer/Chunk Length: ${chunk_len}s"
     echo "  - Batch Size: ${batch_size}"
     echo "  - Log file: ${log_filename}"
     
     # Initialize log with header
-    initialize_log_file "${log_file}" "${total_buffer}" "${chunk_len}" "${batch_size}"
+    initialize_log_file "${log_file}" "${chunk_len}" "${batch_size}"
 
     {
         echo -e "\n=== Starting Transcription ===\n"
@@ -253,7 +232,7 @@ run_experiment() {
             model_stride="${model_stride}" \
             batch_size="${batch_size}" \
             langid='en' || {
-                echo "ERROR: Transcription failed for buffer ${total_buffer}, chunk ${chunk_len}, batch ${batch_size}"
+                echo "ERROR: Transcription failed for chunk ${chunk_len}, batch ${batch_size}"
                 exit 1
             }
 
@@ -288,16 +267,13 @@ main() {
     echo "----------------------------------------"
 
     local count=1
-    for total_buffer in "${total_buffers[@]}"; do
-        validate_positive_number "${total_buffer}" "Total buffer"
-        for chunk_len in "${chunk_lens[@]}"; do
-            validate_positive_number "${chunk_len}" "Chunk length"
-            for batch_size in "${batch_sizes[@]}"; do
-                validate_positive_integer "${batch_size}" "Batch size"
-                echo -e "\n=== Processing Configuration ${count}/${total_configs} ==="
-                run_experiment "${total_buffer}" "${chunk_len}" "${batch_size}" "${experiment_dir}"
-                ((count++))
-            done
+    for chunk_len in "${chunk_lens[@]}"; do
+        validate_positive_number "${chunk_len}" "Chunk length"
+        for batch_size in "${batch_sizes[@]}"; do
+            validate_positive_integer "${batch_size}" "Batch size"
+            echo -e "\n=== Processing Configuration ${count}/${total_configs} ==="
+            run_experiment "${chunk_len}" "${batch_size}" "${experiment_dir}"
+            ((count++))
         done
     done
 
