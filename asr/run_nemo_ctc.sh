@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # ==============================================================================
-# Nemo Buffered RNNT Experiment Runner
+# Nemo Buffered CTC Experiment Runner
 # ==============================================================================
-# This script automates running buffered RNNT inference experiments with various 
+# This script automates running buffered CTC inference experiments with various 
 # configurations and calculates Word Error Rate (WER).
 # ==============================================================================#
 # set -eo pipefail  # Enable strict error checking

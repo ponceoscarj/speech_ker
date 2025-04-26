@@ -5,27 +5,27 @@
 # ==============================================================================
 # This script automates running buffered RNNT inference experiments with various 
 # configurations and calculates Word Error Rate (WER).
-# ==============================================================================
-set -x
-set -eo pipefail  # Exit on error and pipe failures
+# ==============================================================================#
+# set -eo pipefail  # Enable strict error checking
+# trap "echo -e '\nError: Script aborted due to error'; exit 1" ERR
 
 # Example Usage:
 # bash run_nemo_buffered.sh --model-path /path/to/model.nemo \
 #     --dataset-manifest /path/to/manifest.json 
 #     --output-dir /output \
 #     --total-buffers "4.0 6.0" --chunk-lengths "1.6 2.0" --batch-sizes "32 16" \
-#     --model-stride 4 --merge-algo "lcs"
+#     --model-stride 4
 
 # ==============================================================================
 # Global Configuration and Defaults
 # ==============================================================================
-readonly DEFAULT_PRETRAINED="nvidia/canary-1b-flash"
+readonly DEFAULT_PRETRAINED=""
 readonly DEFAULT_OUTPUT="./results"
-readonly DEFAULT_TOTAL_BUFFERS=(4.0 6.0)
-readonly DEFAULT_CHUNK_LENS=(1.6 2.0)
-readonly DEFAULT_BATCH_SIZES=(32 16)
-readonly DEFAULT_MODEL_STRIDE=4
+readonly DEFAULT_CHUNK_LENS=(20 40 60 80)
+readonly DEFAULT_CONTEXTS=(3 5 7 10 15 20 30 40)
 readonly DEFAULT_MERGE_ALGO="middle"
+readonly DEFAULT_BATCH_SIZE=8
+readonly DEFAULT_MODEL_STRIDE=4
 readonly DEFAULT_SLEEP=2
 
 # ==============================================================================
@@ -35,11 +35,11 @@ model_path=""
 dataset_manifest=""
 pretrained_name="$DEFAULT_PRETRAINED"
 output_base_dir="$DEFAULT_OUTPUT"
-total_buffers=("${DEFAULT_TOTAL_BUFFERS[@]}")
 chunk_lens=("${DEFAULT_CHUNK_LENS[@]}")
-batch_sizes=("${DEFAULT_BATCH_SIZES[@]}")
-model_stride="$DEFAULT_MODEL_STRIDE"
+contexts=("${DEFAULT_CONTEXTS[@]}")
 merge_algo="$DEFAULT_MERGE_ALGO"
+batch_size="$DEFAULT_BATCH_SIZE"
+model_stride="$DEFAULT_MODEL_STRIDE"
 sleep_time="$DEFAULT_SLEEP"
 
 
@@ -57,11 +57,11 @@ Mandatory Parameters:
 Optional Parameters:
   -p, --pretrained-name NAME         Pretrained model name (default: $DEFAULT_PRETRAINED)
   -o, --output-dir OUTPUT_DIR        Base output directory (default: $DEFAULT_OUTPUT)
-  -t, --total-buffers BUFFERS        Space-separated total buffer sizes in seconds (default: "${DEFAULT_TOTAL_BUFFERS[@]}"). Length of buffer (chunk + left and right padding) in seconds.
   -c, --chunk-lengths LENGTHS        Space-separated chunk lengths in seconds (default: "${DEFAULT_CHUNK_LENS[@]}")
-  -b, --batch-sizes SIZES            Space-separated batch sizes (default: "${DEFAULT_BATCH_SIZES[@]}")
+  -x, --contexts CONTEXTS            Space-separated context sizes in seconds (default: "${DEFAULT_CONTEXTS[@]}")
+  -a, --merge-algo ALGORITHM         Merge algorithm: 'middle' or 'lcs' (default: "$DEFAULT_MERGE_ALGO")
+  -b, --batch-size SIZE              Batch size (default: $DEFAULT_BATCH_SIZE)
   -r, --model-stride STRIDE          Model stride factor (default: $DEFAULT_MODEL_STRIDE)
-  -a, --merge-algo ALGO              Merge algorithm: 'middle' or 'lcs' (default: $DEFAULT_MERGE_ALGO)
   -s, --sleep-time SECONDS           Sleep between runs (default: $DEFAULT_SLEEP)
   -h, --help                         Show this help message
 EOF
@@ -102,8 +102,8 @@ validate_positive_integer() {
 # ==============================================================================
 parse_parameters() {
     local parsed_args
-    parsed_args=$(getopt -o m:d:p:o:t:c:b:r:a:s:h \
-                --long model-path:,dataset-manifest:,pretrained-name:,output-dir:,total-buffers:,chunk-lengths:,batch-sizes:,model-stride:,merge-algo:,sleep-time:,help \
+    parsed_args=$(getopt -o m:d:p:o:c:x:a:b:r:s:h \
+                --long model-path:,dataset-manifest:,pretrained-name:,output-dir:,chunk-lengths:,contexts:,merge-algo:,batch-size:,model-stride:,sleep-time:,help \
                 -n "$0" -- "$@") || { show_help; exit 1; }
 
     eval set -- "${parsed_args}"
@@ -124,14 +124,6 @@ parse_parameters() {
             -o|--output-dir)
                 output_base_dir="$2"
                 shift 2 ;;
-            -t|--total-buffers)
-                local trimmed_buffers
-                trimmed_buffers=$(echo "$2" | xargs)
-                IFS=' ' read -r -a total_buffers <<< "$trimmed_buffers"
-                for buf in "${total_buffers[@]}"; do
-                    validate_positive_number "${buf}" "Total buffer"
-                done
-                shift 2 ;;
             -c|--chunk-lengths)
                 local trimmed_chunks
                 trimmed_chunks=$(echo "$2" | xargs)
@@ -140,24 +132,26 @@ parse_parameters() {
                     validate_positive_number "${chunk}" "Chunk length"
                 done
                 shift 2 ;;
-            -b|--batch-sizes)
-                local trimmed_batches
-                trimmed_batches=$(echo "$2" | xargs)
-                IFS=' ' read -r -a batch_sizes <<< "$trimmed_batches"
-                for bs in "${batch_sizes[@]}"; do
-                    validate_positive_integer "${bs}" "Batch size"
+            -a|--merge-algo)
+                merge_algo="$2"
+                if [[ "$merge_algo" != "middle" && "$merge_algo" != "lcs" ]]; then
+                    echo "ERROR: Invalid merge algorithm '${merge_algo}'. Must be 'middle' or 'lcs'."
+                    exit 1
+                fi
+                shift 2 ;;                
+            -x|--contexts)
+                IFS=' ' read -r -a contexts <<< "$(echo "$2" | xargs)"
+                for ctx in "${contexts[@]}"; do
+                    validate_positive_number "$ctx" "Context"
                 done
+                shift 2 ;;                
+            -b|--batch-size)
+                batch_size="$2"
+                validate_positive_integer "$batch_size" "Batch size"
                 shift 2 ;;
             -r|--model-stride)
                 model_stride="$2"
                 validate_positive_integer "${model_stride}" "Model stride"
-                shift 2 ;;
-            -a|--merge-algo)
-                merge_algo="$2"
-                if [[ "${merge_algo}" != "middle" && "${merge_algo}" != "lcs" ]]; then
-                    echo "ERROR: Merge algorithm must be 'middle' or 'lcs'"
-                    exit 1
-                fi
                 shift 2 ;;
             -s|--sleep-time)
                 sleep_time="$2"
@@ -173,20 +167,7 @@ parse_parameters() {
     [[ -z "${model_path}" ]] && { echo "ERROR: Missing --model-path"; exit 1; }
     [[ -z "${dataset_manifest}" ]] && { echo "ERROR: Missing --dataset-manifest"; exit 1; }
 
-    # Validate array parameters
-    if [[ ${#total_buffers[@]} -eq 0 ]]; then
-        echo "ERROR: No total buffers specified"
-        exit 1
-    fi
 
-    if [[ ${#chunk_lens[@]} -eq 0 ]]; then
-        echo "ERROR: No chunk lengths specified"
-        exit 1
-    fi
-    if [[ ${#batch_sizes[@]} -eq 0 ]]; then
-        echo "ERROR: No batch sizes specified"
-        exit 1
-    fi
 }
 
 # ==============================================================================
@@ -205,22 +186,27 @@ create_experiment_dir() {
 
 initialize_log_file() {
     local log_path="$1"
-    local total_buffer="$2"
-    local chunk_len="$3"
+    local chunk_len="$2"
+    local context="$3"
+    local total_buffer=$(("$chunk_len + $context"))
     local batch_size="$4"
     cat <<EOF > "${log_path}"
-=== Experiment Parameters ===
-Start Time:    $(date +'%Y-%m-%d %H:%M:%S')
-Model Path:    ${model_path}
-Pretrained:    ${pretrained_name}
-Dataset:       ${dataset_manifest}
-Total Buffer:  ${total_buffer}s
-Chunk Length:  ${chunk_len}s
-Batch Size:    ${batch_size}
-Model Stride:  ${model_stride}
-Merge Algo:    ${merge_algo}
-Sleep Time:    ${sleep_time}s
-=============================
+╔══════════════════════════════════════════════════╗
+║            EXPERIMENT PARAMETERS                 ║
+╠══════════════════════════════════════════════════╣
+  Start Time    │ $(date +'%Y-%m-%d %H:%M:%S %Z')
+  ──────────────┼───────────────────────────────────
+  Model Path    │ ${model_path}
+  Pretrained    │ ${pretrained_name}
+  Dataset       │ $(basename "${dataset_manifest}")
+  Chunk Length  │ ${chunk_len}s
+  Context       │ ${context}s
+  Merge Algo    │ ${merge_algo}"
+  Total Buffer  │ ${total_buffer}s
+  Batch Size    │ ${batch_size}
+  Model Stride  │ ${model_stride}
+  Sleep Time    │ ${sleep_time}s
+╚══════════════════════════════════════════════════╝
 EOF
 }
 
@@ -228,34 +214,38 @@ EOF
 # Experiment Execution
 # ==============================================================================
 run_experiment() {
-    local total_buffer="$1"
-    local chunk_len="$2"
-    local batch_size="$3"
-    local experiment_dir="$4"
+    local chunk_len="$1"
+    local context="$2"
+    local experiment_dir="$3"
+    local batch_size="$4"
+    local total_buffer=$(("$chunk_len + $context"))    
     local model_dir_name=$(basename "${experiment_dir}")
     local timestamp=$(date +'%Y%m%d_%H%M%S')
 
     # Sanitize float values for filenames
-    local total_buffer_sanitized="${total_buffer//./_}"
     local chunk_len_sanitized="${chunk_len//./_}"
+    local context_sanitized="${context//./_}"    
     
-    local log_filename="${model_dir_name}_buffer${total_buffer_sanitized}_chunk${chunk_len_sanitized}_batch${batch_size}_${merge_algo}_${timestamp}.log"
+    local log_filename="${model_dir_name}_chunk${chunk_len_sanitized}_ctx${context_sanitized}_batch${batch_size}_mergealgo${merge_algo}.log"
     local log_file="${experiment_dir}/${log_filename}"
-    local output_file="${experiment_dir}/${model_dir_name}_buffer${total_buffer_sanitized}_chunk${chunk_len_sanitized}_batch${batch_size}_${merge_algo}_${timestamp}.json"
+    local output_file="${experiment_dir}/${model_dir_name}_chunk${chunk_len_sanitized}_ctx${context_sanitized}_batch${batch_size}_mergealgo${merge_algo}.json"
 
     echo "Running configuration:"
-    echo "  - Total Buffer: ${total_buffer}s"
-    echo "  - Chunk Length: ${chunk_len}s"
-    echo "  - Batch Size: ${batch_size}"
-    echo "  - Merge Algo: ${merge_algo}"
-    echo "  - Log file: ${log_filename}"
+    echo "  - Buffer Length:    ${total_buffer}s"
+    echo "  - Chunk Length:     ${chunk_len}s"
+    echo "  - Context Length:   ${context}s"
+    echo "  - Merge Algo:       ${merge_algo}"     
+    echo "  - Batch Size:   ${batch_size}"
+    echo "  - Log file:     ${log_filename}"
     
     # Initialize log with header
-    initialize_log_file "${log_file}" "${total_buffer}" "${chunk_len}" "${batch_size}"
+    initialize_log_file "${log_file}" "${chunk_len}" "${context}" "${batch_size}" "${merge_algo}"
 
     {
-        echo -e "\n=== Starting Transcription ===\n"
-        python3 nemo_buffered_infer_rnnt.py \
+        echo -e "\033[1;34m┌───────────────────────────────────────────────┐"
+        echo -e "│          Starting Transcription Process         │"
+        echo -e "└───────────────────────────────────────────────┘\033[0m"
+        python3 nemo_buffered_infer_ctc.py \
             model_path="${model_path}" \
             pretrained_name="${pretrained_name}" \
             dataset_manifest="${dataset_manifest}" \
@@ -263,11 +253,10 @@ run_experiment() {
             total_buffer_in_secs="${total_buffer}" \
             chunk_len_in_secs="${chunk_len}" \
             model_stride="${model_stride}" \
-            batch_size="${batch_size}" \
             merge_algo="${merge_algo}" \
-            clean_groundtruth_text=true \
+            batch_size="${batch_size}" \
             langid='en' || {
-                echo "ERROR: Transcription failed for buffer ${total_buffer}, chunk ${chunk_len}, batch ${batch_size}"
+                echo "ERROR: Transcription failed for chunk ${chunk_len}, context ${context}"
                 exit 1
             }
 
@@ -288,35 +277,59 @@ run_experiment() {
 # Main Program
 # ==============================================================================
 main() {
-    echo "=== Starting main() ==="    
+    echo -e "\n\033[1;36m=== Nemo CTC Experiment Runner ===\033[0m"
+    echo -e "\033[1;34m$(date +'%Y-%m-%d %H:%M:%S %Z')\033[0m\n"    
+    
     parse_parameters "$@"
     echo "=== Parameters parsed ==="
         
     local experiment_dir=$(create_experiment_dir)
-    local total_configs=$((${#total_buffers[@]} * ${#chunk_lens[@]} * ${#batch_sizes[@]}))
+    local total_configs=$((${#chunk_lens[@]} * ${#contexts[@]}))
     
-    echo -e "\n=== Starting Experiment Series ==="
-    echo "Model:          ${pretrained_name}"
-    echo "Output Directory: ${experiment_dir}"
-    echo "Total Configurations: ${total_configs}"
-    echo "----------------------------------------"
+    echo -e "\033[1;35m▬▬▬▬▬▬▬▬▬▬▬▬ Experiment Setup ▬▬▬▬▬▬▬▬▬▬▬▬\033[0m"
+    printf "\033[1m%-20s\033[0m %s\n" \
+        "Merge Algorithm:" "${merge_algo}" \
+        "Model:" "${pretrained_name:-[custom]}" \
+        "Dataset:" "$(basename ${dataset_manifest})" \
+        "Output Directory:" "${experiment_dir}" \
+        "Total Experiments:" "${total_configs}" \
+        "Chunk Lengths:" "${chunk_lens[*]} seconds" \
+        "Contexts:" "${contexts[*]} seconds" \
+        "Batch Size:" "${batch_size}" \
+        "Model Stride:" "${model_stride}" \
+        "Sleep Between Runs:" "${sleep_time}s"
+    echo -e "\033[1;35m▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\033[0m\n"
 
     local count=1
-    for total_buffer in "${total_buffers[@]}"; do
-        validate_positive_number "${total_buffer}" "Total buffer"
-        for chunk_len in "${chunk_lens[@]}"; do
-            validate_positive_number "${chunk_len}" "Chunk length"
-            for batch_size in "${batch_sizes[@]}"; do
-                validate_positive_integer "${batch_size}" "Batch size"
-                echo -e "\n=== Processing Configuration ${count}/${total_configs} ==="
-                run_experiment "${total_buffer}" "${chunk_len}" "${batch_size}" "${experiment_dir}"
-                ((count++))
-            done
+    local start_time=$SECONDS    
+
+    for chunk in "${chunk_lens[@]}"; do
+        for ctx in "${contexts[@]}"; do
+            local elapsed=$((SECONDS - start_time))
+            local remaining=$(( (total_configs - count + 1) * elapsed / (count) ))
+            
+            echo -e "\033[1;33m〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰\033[0m"
+            printf "\033[1;32m[%d/%d] Running Experiment:\033[0m\n" $count $total_configs
+            printf "  - Chunk: \033[1m%5.1fs\033[0m\n" $chunk
+            printf "  - Context: \033[1m%5.1fs\033[0m\n" $ctx
+            local total_buffer
+            total_buffer=$(awk "BEGIN { printf \"%.1f\", $chunk + $ctx }")        
+            printf "  - Total Buffer: \033[1m%5.1fs\033[0m\n" "$total_buffer"
+            printf "  - Batch Size: \033[1m%3d\033[0m\n" $batch_size
+            printf "  - Elapsed: %02d:%02d | Est. Remaining: %02d:%02d\n" \
+                $((elapsed/60)) $((elapsed%60)) \
+                $((remaining/60)) $((remaining%60))
+            
+            run_experiment "$chunk" "$ctx" "$experiment_dir" "$batch_size"
+            ((count++))
         done
     done
 
-    echo -e "\n=== All Experiments Completed ==="
-    echo "Final results available in: ${experiment_dir}"
+
+    local total_time=$((SECONDS - start_time))
+    echo -e "\n\033[1;36m✓✓✓ All Experiments Completed ✓✓✓\033[0m"
+    echo -e "\033[1mTotal Duration:\033[0m $((total_time/60))m $((total_time%60))s"
+    echo -e "\033[1mResults Directory:\033[0m ${experiment_dir}\n"
 }
 
 main "$@"
