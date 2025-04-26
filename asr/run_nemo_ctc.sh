@@ -6,8 +6,8 @@
 # This script automates running buffered RNNT inference experiments with various 
 # configurations and calculates Word Error Rate (WER).
 # ==============================================================================#
-#set -x
-# set -eo pipefail  # Exit on error and pipe failures
+set -eo pipefail  # Enable strict error checking
+trap "echo -e '\nError: Script aborted due to error'; exit 1" ERR
 
 # Example Usage:
 # bash run_nemo_buffered.sh --model-path /path/to/model.nemo \
@@ -23,7 +23,7 @@ readonly DEFAULT_PRETRAINED=""
 readonly DEFAULT_OUTPUT="./results"
 readonly DEFAULT_CHUNK_LENS=(20 40 60 80)
 readonly DEFAULT_CONTEXTS=(3 5 7 10 15 20 30 40)
-readonly DEFAULT_BATCH_SIZES=8
+readonly DEFAULT_BATCH_SIZE=8
 readonly DEFAULT_MODEL_STRIDE=4
 readonly DEFAULT_SLEEP=2
 
@@ -100,7 +100,7 @@ validate_positive_integer() {
 parse_parameters() {
     local parsed_args
     parsed_args=$(getopt -o m:d:p:o:c:x:b:r:s:h \
-                --long model-path:,dataset-manifest:,pretrained-name:,output-dir:,chunk-lengths:,contexts:,batch-sizes:,model-stride:,sleep-time:,help \
+                --long model-path:,dataset-manifest:,pretrained-name:,output-dir:,chunk-lengths:,contexts:,batch-size:,model-stride:,sleep-time:,help \
                 -n "$0" -- "$@") || { show_help; exit 1; }
 
     eval set -- "${parsed_args}"
@@ -135,13 +135,9 @@ parse_parameters() {
                     validate_positive_number "$ctx" "Context"
                 done
                 shift 2 ;;                
-            -b|--batch-sizes)
-                local trimmed_batches
-                trimmed_batches=$(echo "$2" | xargs)
-                IFS=' ' read -r -a batch_sizes <<< "$trimmed_batches"
-                for bs in "${batch_sizes[@]}"; do
-                    validate_positive_integer "${bs}" "Batch size"
-                done
+            -b|--batch-size)
+                batch_size="$2"
+                validate_positive_integer "$batch_size" "Batch size"
                 shift 2 ;;
             -r|--model-stride)
                 model_stride="$2"
@@ -161,15 +157,7 @@ parse_parameters() {
     [[ -z "${model_path}" ]] && { echo "ERROR: Missing --model-path"; exit 1; }
     [[ -z "${dataset_manifest}" ]] && { echo "ERROR: Missing --dataset-manifest"; exit 1; }
 
-    # Validate array parameters
-    if [[ ${#chunk_lens[@]} -eq 0 ]]; then
-        echo "ERROR: No chunk lengths specified"
-        exit 1
-    fi
-    if [[ ${#batch_sizes[@]} -eq 0 ]]; then
-        echo "ERROR: No batch sizes specified"
-        exit 1
-    fi
+
 }
 
 # ==============================================================================
@@ -190,21 +178,24 @@ initialize_log_file() {
     local log_path="$1"
     local chunk_len="$2"
     local context="$3"
-    local total_buffer=$(bc <<< "$chunk_len + $context")
+    local total_buffer=$(("$chunk_len + $context"))
     local batch_size="$4"
     cat <<EOF > "${log_path}"
-=== Experiment Parameters ===
-Start Time:             $(date +'%Y-%m-%d %H:%M:%S')
-Model Path:             ${model_path}
-Pretrained:             ${pretrained_name}
-Dataset:                ${dataset_manifest}
-Chunk Length:           ${chunk_len}s
-Context:                ${context}s
-Total Buffer:           ${total_buffer}s
-Batch Size:             ${batch_size}
-Model Stride:           ${model_stride}
-Sleep Time:             ${sleep_time}s
-=============================
+╔══════════════════════════════════════════════════╗
+║            EXPERIMENT PARAMETERS                 ║
+╠══════════════════════════════════════════════════╣
+  Start Time    │ $(date +'%Y-%m-%d %H:%M:%S %Z')
+  ──────────────┼───────────────────────────────────
+  Model Path    │ ${model_path}
+  Pretrained    │ ${pretrained_name}
+  Dataset       │ $(basename "${dataset_manifest}")
+  Chunk Length  │ ${chunk_len}s
+  Context       │ ${context}s
+  Total Buffer  │ ${total_buffer}s
+  Batch Size    │ ${batch_size}
+  Model Stride  │ ${model_stride}
+  Sleep Time    │ ${sleep_time}s
+╚══════════════════════════════════════════════════╝
 EOF
 }
 
@@ -213,9 +204,10 @@ EOF
 # ==============================================================================
 run_experiment() {
     local chunk_len="$1"
-    local batch_size="$2"
+    local context="$2"
     local experiment_dir="$3"
-    local total_buffer=$(bc <<< "$chunk_len + $context")    
+    local batch_size="$4"
+    local total_buffer=$(("$chunk_len + $context"))    
     local model_dir_name=$(basename "${experiment_dir}")
     local timestamp=$(date +'%Y%m%d_%H%M%S')
 
@@ -223,9 +215,9 @@ run_experiment() {
     local chunk_len_sanitized="${chunk_len//./_}"
     local context_sanitized="${context//./_}"    
     
-    local log_filename="${model_dir_name}_buffer${chunk_len_sanitized}_chunk${chunk_len_sanitized}_batch${batch_size}.log"
+    local log_filename="${model_dir_name}_chunk${chunk_len_sanitized}_ctx${context_sanitized}_batch${batch_size}.log"
     local log_file="${experiment_dir}/${log_filename}"
-    local output_file="${experiment_dir}/${model_dir_name}_buffer${chunk_len_sanitized}_chunk${chunk_len_sanitized}_batch${batch_size}.json"
+    local output_file="${experiment_dir}/${model_dir_name}_chunk${chunk_len_sanitized}_ctx${context_sanitized}_batch${batch_size}.json"
 
     echo "Running configuration:"
     echo "  - Buffer Length:    ${total_buffer}s"
@@ -235,20 +227,22 @@ run_experiment() {
     echo "  - Log file:     ${log_filename}"
     
     # Initialize log with header
-    initialize_log_file "${log_file}" "${chunk_len}" "${context}"
+    initialize_log_file "${log_file}" "${chunk_len}" "${context}" "${batch_size}"
 
     {
-        echo -e "\n=== Starting Transcription ===\n"
+        echo -e "\033[1;34m┌───────────────────────────────────────────────┐"
+        echo -e "│          Starting Transcription Process         │"
+        echo -e "└───────────────────────────────────────────────┘\033[0m"
         python3 nemo_buffered_infer_ctc.py \
-            model_path="${model_path}" \
-            pretrained_name="${pretrained_name}" \
-            dataset_manifest="${dataset_manifest}" \
-            output_filename="${output_file}" \
-            total_buffer_in_secs="${total_buffer}" \
-            chunk_len_in_secs="${chunk_len}" \
-            model_stride="${model_stride}" \
-            batch_size="${batch_size}" \
-            langid='en' || {
+            --model_path="${model_path}" \
+            --pretrained_name="${pretrained_name}" \
+            --dataset_manifest="${dataset_manifest}" \
+            --output_filename="${output_file}" \
+            --total_buffer_in_secs="${total_buffer}" \
+            --chunk_len_in_secs="${chunk_len}" \
+            --model_stride="${model_stride}" \
+            --batch_size="${batch_size}" \
+            --langid='en' || {
                 echo "ERROR: Transcription failed for chunk ${chunk_len}, context ${context}"
                 exit 1
             }
@@ -270,31 +264,56 @@ run_experiment() {
 # Main Program
 # ==============================================================================
 main() {
-    echo "=== Starting main() ==="    
+    echo -e "\n\033[1;36m=== Nemo CTC Experiment Runner ===\033[0m"
+    echo -e "\033[1;34m$(date +'%Y-%m-%d %H:%M:%S %Z')\033[0m\n"    
+    
     parse_parameters "$@"
     echo "=== Parameters parsed ==="
         
     local experiment_dir=$(create_experiment_dir)
-    local total_configs=$((${#chunk_lens[@]} * ${#batch_sizes[@]}))
+    local total_configs=$((${#chunk_lens[@]} * ${#contexts[@]}))
     
-    echo -e "\n=== Starting Experiment Series ==="
-    echo "Model:                ${pretrained_name}"
-    echo "Output Directory:     ${experiment_dir}"
-    echo "Total Configurations: ${total_configs}"
-    echo "----------------------------------------"
+    echo -e "\033[1;35m▬▬▬▬▬▬▬▬▬▬▬▬ Experiment Setup ▬▬▬▬▬▬▬▬▬▬▬▬\033[0m"
+    printf "\033[1m%-20s\033[0m %s\n" \
+        "Model:" "${pretrained_name:-[custom]}" \
+        "Dataset:" "$(basename ${dataset_manifest})" \
+        "Output Directory:" "${experiment_dir}" \
+        "Total Experiments:" "${total_configs}" \
+        "Chunk Lengths:" "${chunk_lens[*]} seconds" \
+        "Contexts:" "${contexts[*]} seconds" \
+        "Batch Size:" "${batch_size}" \
+        "Model Stride:" "${model_stride}" \
+        "Sleep Between Runs:" "${sleep_time}s"
+    echo -e "\033[1;35m▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\033[0m\n"
 
     local count=1
+    local start_time=$SECONDS    
+
     for chunk in "${chunk_lens[@]}"; do
         for ctx in "${contexts[@]}"; do
-            echo -e "\n=== Configuration $count/$total_configs ==="
-            run_experiment "$chunk" "$ctx" "$experiment_dir"
+            local elapsed=$((SECONDS - start_time))
+            local remaining=$(( (total_configs - count + 1) * elapsed / (count) ))
+            
+            echo -e "\033[1;33m〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰〰\033[0m"
+            printf "\033[1;32m[%d/%d] Running Experiment:\033[0m\n" $count $total_configs
+            printf "  - Chunk: \033[1m%5.1fs\033[0m\n" $chunk
+            printf "  - Context: \033[1m%5.1fs\033[0m\n" $ctx
+            printf "  - Total Buffer: \033[1m%5.1fs\033[0m\n" $(bc <<< "$chunk + $ctx")
+            printf "  - Batch Size: \033[1m%3d\033[0m\n" $batch_size
+            printf "  - Elapsed: %02d:%02d | Est. Remaining: %02d:%02d\n" \
+                $((elapsed/60)) $((elapsed%60)) \
+                $((remaining/60)) $((remaining%60))
+            
+            run_experiment "$chunk" "$ctx" "$experiment_dir" "$batch_size"
             ((count++))
         done
     done
 
 
-    echo -e "\n=== All Experiments Completed ==="
-    echo "Final results available in: ${experiment_dir}"
+    local total_time=$((SECONDS - start_time))
+    echo -e "\n\033[1;36m✓✓✓ All Experiments Completed ✓✓✓\033[0m"
+    echo -e "\033[1mTotal Duration:\033[0m $((total_time/60))m $((total_time%60))s"
+    echo -e "\033[1mResults Directory:\033[0m ${experiment_dir}\n"
 }
 
 main "$@"
