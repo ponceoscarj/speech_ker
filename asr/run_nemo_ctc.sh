@@ -7,7 +7,7 @@
 # configurations and calculates Word Error Rate (WER).
 # ==============================================================================
 set -x
-set -eo pipefail  # Exit on error and pipe failures
+# set -eo pipefail  # Exit on error and pipe failures
 
 # Example Usage:
 # bash run_nemo_buffered.sh --model-path /path/to/model.nemo \
