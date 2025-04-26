@@ -298,7 +298,9 @@ main() {
             printf "\033[1;32m[%d/%d] Running Experiment:\033[0m\n" $count $total_configs
             printf "  - Chunk: \033[1m%5.1fs\033[0m\n" $chunk
             printf "  - Context: \033[1m%5.1fs\033[0m\n" $ctx
-            printf "  - Total Buffer: \033[1m%5.1fs\033[0m\n" $(total_buffer=$(($chunk_len + $context)))
+            local total_buffer
+            total_buffer=$(awk "BEGIN { printf \"%.1f\", $chunk + $ctx }")        
+            printf "  - Total Buffer: \033[1m%5.1fs\033[0m\n" "$total_buffer"
             printf "  - Batch Size: \033[1m%3d\033[0m\n" $batch_size
             printf "  - Elapsed: %02d:%02d | Est. Remaining: %02d:%02d\n" \
                 $((elapsed/60)) $((elapsed%60)) \
