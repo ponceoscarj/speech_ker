@@ -114,8 +114,8 @@ def main():
             no_repeat_ngram_size=0,
             torch_dtype=torch_dtype)
 
-            pipe.model.generation_config.no_timestamps_token_probability_threshold = None
-            pipe.model.generation_config.no_repeat_ngram_size = 0
+        pipe.model.generation_config.no_timestamps_token_probability_threshold = None
+        pipe.model.generation_config.no_repeat_ngram_size = 0
 
       
         
