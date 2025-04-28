@@ -112,10 +112,7 @@ def main():
             return_timestamps=args.timestamps if args.timestamps != "none" else False,
             torch_dtype=torch_dtype)
 
-        pipe.model.generation_config.no_timestamps_token_probability_threshold = None
-        pipe.model.generation_config.no_repeat_ngram_size = 0
 
-      
         
     with tqdm(total=3, desc="Loading Data") as bar:
         # Parallel audio loading with memory mapping
