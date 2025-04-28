@@ -110,8 +110,6 @@ def main():
             chunk_length_s=args.chunk_length,
             batch_size=args.batch_size,
             return_timestamps=args.timestamps if args.timestamps != "none" else False,
-            no_timestamps_token_probability_threshold=None,
-            no_repeat_ngram_size=0,
             torch_dtype=torch_dtype)
 
         pipe.model.generation_config.no_timestamps_token_probability_threshold = None
