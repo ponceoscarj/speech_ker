@@ -12,8 +12,8 @@ config_yml can be: ['diar_infer_general.yaml', 'diar_infer_meeting.yaml', 'diar_
 
 python diarization.py --diarizer_type system_vad \
     --config_yml diar_infer_telephonic.yaml \
-    --work_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr_work_dir \
-    --output_dir  /Users/oscarponce/Documents/PythonProjects/speech_ker/diarization/system_vad \
+    --work_dir /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/work_files \
+    --output_dir  /home/ext_alzahidy_misk_mayo_edu/speech_ker/diarization/system_vad \
     --vad_model vad_multilingual_marblenet \
     --speaker_model titanet_large \
     --onset 0.7 \
