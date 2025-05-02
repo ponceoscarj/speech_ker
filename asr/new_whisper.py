@@ -6,8 +6,8 @@ from datasets import load_dataset, Audio
 import torch
 import numpy as np
 
-processor = AutoProcessor.from_pretrained("openai/whisper-small.en")
-model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-small.en", torch_dtype=torch.float16)
+processor = AutoProcessor.from_pretrained("/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/whisper-large-v3")
+model = WhisperForConditionalGeneration.from_pretrained("/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/whisper-large-v3", torch_dtype=torch.float16)
 model.to("cuda")
 
 # rertieve 8 long audio sequences
