@@ -11,9 +11,17 @@ model = WhisperForConditionalGeneration.from_pretrained("/home/ext_ponceponte_os
 model.to("cuda")
 
 # rertieve 8 long audio sequences
-ds = load_dataset("distil-whisper/earnings21", "full")["test"]
+print('loading dataset')
+ds = load_dataset("/home/ext_ponceponte_oscar_mayo_edu/speech_ker/audio_files/audio_files")["train"]
 ds = ds.cast_column("audio", Audio(sampling_rate=16000))
-ds = ds[:8] # take batch size of 8
+print('Taking batch size of 8')
+# ds = ds[:8] # take batch size of 8
+# print(ds)
+
+print('printing audio list')
+
+for i in ds["audio"]:
+    print(i)
 
 raw_audio = [x["array"].astype(np.float32) for x in ds["audio"]]
 
