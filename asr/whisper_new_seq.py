@@ -94,8 +94,8 @@ def main():
         bar.update(1)
         model.to("cuda")
 
-        # if getattr(model.generation_config, "is_multilingual", False):
-        #   model.generation_config.language = "en"
+        if getattr(model.generation_config, "is_multilingual", False):
+          model.generation_config.language = "en"
         #   model.generation_config.task = "transcribe"
 
         # model = torch.compile(model)
@@ -163,14 +163,18 @@ def main():
             # Calculate batch RTF
             batch_rtf = real_time_factor(batch_processing_time, batch_audio_duration)
 
-            # Print and save batch RTF
-            if batch_rtf is not None:
-              print(f"Batch {i // args.batch_size + 1}: Processing Time = {batch_processing_time:.2f} sec, RTF = {batch_rtf:.4f}")
-              batch_rtf_list.append(batch_rtf)  #  Save batch RTF to list
-            else:
-              print(f"Batch {i // args.batch_size + 1}: Audio duration zero, cannot calculate RTF.")
-            
+            # Prepare batch information message
+            batch_num = i // args.batch_size + 1
+            batch_info = [
+                f"Batch {batch_num} completed",
+                f"Files: {len(batch_paths)}",
+                f"Time: {batch_processing_time:.2f}s",
+                f"RTF: {batch_rtf:.4f}" if batch_rtf is not None else "RTF: N/A"
+            ]
+
+           
             # Process results
+            batch_wer = []
             for path, result in zip(batch_paths, outputs):
                 pred_text = result["text"] if isinstance(result, dict) else result                
                 entry = {
@@ -192,14 +196,18 @@ def main():
                         wer_bar.update(1)
                         wer_bar.set_postfix(current_wer=f"{wer:.2f}")
                       
-                # Safely print based on whether WER was calculated
-                if args.gold_standard and gold_text:
-                  print(f'Processed {args.batch_size}. WER = {wer}')
-                else:
-                  print(f'Processed {args.batch_size}.')
+            
                   
                 results.append(entry)
                 main_bar.update(1)
+                
+            # Add WER information to batch message if applicable
+            if args.gold_standard and batch_wer:
+                avg_wer = sum(batch_wer) / len(batch_wer)
+                batch_info.append(f"Avg WER: {avg_wer:.2f}")
+
+            # Print consolidated batch information
+            print(", ".join(batch_info))
 
     finally:
         main_bar.close()
