@@ -12,15 +12,19 @@ config_yml can be: ['diar_infer_general.yaml', 'diar_infer_meeting.yaml', 'diar_
 
 python diarization.py --diarizer_type system_vad \
     --config_yml diar_infer_telephonic.yaml \
-    --work_dir /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/work_files \
-    --output_dir  /home/ext_alzahidy_misk_mayo_edu/speech_ker/diarization/system_vad \
+    --work_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr_work_dir \
+    --output_dir  /Users/oscarponce/Documents/PythonProjects/speech_ker/diarization/system_vad \
     --vad_model vad_multilingual_marblenet \
     --speaker_model titanet_large \
     --onset 0.7 \
     --offset 0.5 \
-    --pad_offset -0.03 \
+    --pad_offset 0 \
     --manifest_name diarize_manifest \
-    --num_workers 0
+    --num_workers 0 \
+    --ignore_overlap True \
+    --min_duration_off 0.15 \
+    --min_duration_on 0.1 \
+    --pad_onset 0.1
 
 '''
 
@@ -44,8 +48,8 @@ def main():
                         help='VAD onset threshold (default: 0.8)')
     parser.add_argument('--offset', type=float, default=0.6,
                         help='VAD offset threshold (default: 0.6)')
-    parser.add_argument('--pad_offset', type=float, default=-0.05,
-                        help='VAD pad offset (default: -0.05)')
+    parser.add_argument('--pad_offset', type=float, default=0,
+                        help='VAD pad offset (default: 0)')
     parser.add_argument('--msdd_model', type=str, default='diar_msdd_telephonic',
                         help='MSDD model for neural diarizer (default: diar_msdd_telephonic)')
     parser.add_argument('--sigmoid_threshold', type=str, default='1.0',
@@ -60,6 +64,14 @@ def main():
     #                     help='Path to transcript text file (default: asr_work_dir/asr_outcomes/parakeet_tdt.txt)')
     parser.add_argument('--num_workers', type=int, default=0,
                         help='Number of workers for data loading (default: 0)')
+    parser.add_argument('--ignore_overlap', type=bool, default=True,
+                        help='Ignore overlap in clustering (default: False)')
+    parser.add_argument('--min_duration_off', type=float, default=0.15,
+                        help='Removes short silences if the duration is less than the specified minimum duration')
+    parser.add_argument('--min_duration_on', type=float, default=0.1,
+                        help='Removes short speech segments if the duration is less than the specified minimum duration')
+    parser.add_argument('--pad_onset', type=float, default=0.1,
+                        help=' Adds the specified duration at the beginning of each speech segment')
     args = parser.parse_args()
 
     # Create directories if they don't exist
@@ -85,6 +97,7 @@ def main():
     config.diarizer.out_dir = args.output_dir
     config.diarizer.speaker_embeddings.model_path = args.speaker_model
     config.diarizer.oracle_vad = args.oracle_vad
+    config.ignore_overlap = args.ignore_overlap
     config.diarizer.clustering.parameters.oracle_num_speakers = args.oracle_num_speakers
 
     # Set VAD parameters
@@ -92,6 +105,10 @@ def main():
     config.diarizer.vad.parameters.onset = args.onset
     config.diarizer.vad.parameters.offset = args.offset
     config.diarizer.vad.parameters.pad_offset = args.pad_offset
+    config.diarizer.vad.parameters.min_duration_off = args.min_duration_off
+    config.diarizer.vad.parameters.min_duration_on = args.min_duration_on
+    config.diarizer.vad.parameters.pad_onset = args.pad_onset
+    
 
     # Configure MSDD if using neural diarizer
     if args.diarizer_type == 'neural':
