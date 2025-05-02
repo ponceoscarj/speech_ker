@@ -10,10 +10,9 @@ Example:
 python crisperwhisper.py --input_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
                 --output_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/output/CrisperWhisper \
                 --model /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/models/CrisperWhisper \
-                --chunk_length 30 \
-                --batch_size 1 \
+                --output_dir sequential_whisper_largeV3 \
+                --batch_size 8 \
                 --timestamps none \
-                --
                 --extensions .wav
 
 
@@ -66,8 +65,6 @@ def main():
                        help="ASR model identifier from Hugging Face Hub or local path")
     parser.add_argument("--output_filename", type=str, default="",
                        help="Custom base name for output JSON file (optional)")    
-    parser.add_argument("--chunk_length", type=int, default=30,
-                     help="Length of audio chunks in seconds")
     parser.add_argument("--batch_size", type=int, default=1,
                      help="Batch size for processing")
     parser.add_argument("--timestamps", choices=["word", "segment", "none"], default="word",
