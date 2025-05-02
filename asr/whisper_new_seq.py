@@ -94,9 +94,9 @@ def main():
         bar.update(1)
         model.to("cuda")
 
-        if getattr(model.generation_config, "is_multilingual", False):
-          model.generation_config.language = "en"
-          model.generation_config.task = "transcribe"
+        # if getattr(model.generation_config, "is_multilingual", False):
+        #   model.generation_config.language = "en"
+        #   model.generation_config.task = "transcribe"
 
         # model = torch.compile(model)
         processor = AutoProcessor.from_pretrained(args.model)
@@ -146,7 +146,7 @@ def main():
 
             with torch.inference_mode():
               with torch.cuda.amp.autocast():
-                inputs = processor(raw_audio, return_tensors="pt", truncation=False, padding="longest", return_attention_mask=True, sampling_rate=16_000)
+                inputs = processor(batch_audio_arrays, return_tensors="pt", truncation=False, padding="longest", return_attention_mask=True, sampling_rate=16_000)
                 inputs = inputs.to("cuda", torch.float16)
                 result = model.generate(**inputs, condition_on_prev_tokens=False, temperature=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0), logprob_threshold=-1.0, compression_ratio_threshold=1.35, return_timestamps=True)
                 outputs = processor.batch_decode(result, skip_special_tokens=True)
