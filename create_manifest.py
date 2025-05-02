@@ -10,8 +10,8 @@ For Canary models, you need to use the "asr" type.
 
 For ASR:
 python script.py asr \
-    --data_dir /path/to/audio_files \
-    --work_dir /output/directory \
+    --data_dir /home/ext_alzahidy_misk_mayo_edu/speech_ker/audio_files/audio_valid \
+    --work_dir /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/work_files \
     --output_file asr_manifest \
     --source_lang en \
     --target_lang en \
@@ -50,8 +50,8 @@ python create_manifest.py asr \
     --pnc no    
 
 python create_manifest.py diarization \
-    --data_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
-    --work_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr_work_dir \
+    --data_dir /home/ext_alzahidy_misk_mayo_edu/speech_ker/audio_files/audio_valid \
+    --work_dir /home/ext_alzahidy_misk_mayo_edu/speech_ker/asr/work_files \
     --output_file diarize_manifest
 
 """
