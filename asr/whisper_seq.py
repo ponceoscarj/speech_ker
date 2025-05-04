@@ -213,7 +213,7 @@ def main():
 
     # Save outputs
     timestamp = args.output_filename or datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_base = Path(args.output_dir)/f"results_{timestamp}"
+    out_base = Path(args.output_dir)/f"{timestamp}"
     with open(f"{out_base}.json", "w") as f:
         json.dump(all_results, f, indent=2)
 
