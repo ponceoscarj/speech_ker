@@ -194,7 +194,7 @@ def main():
             # })
             trans_bar.refresh()
 
-            print(f"Batch {batch_num}: processed files → {names}")
+            print(f"\n\nBatch {batch_num}: processed files → {names}")
             if batch_wers:
                 print(f"Batch WERs → {batch_wers} | avg WER: {avg_batch_wer}")
             print(f"Batch processing time → {decode_time:.2f}s\n")            
