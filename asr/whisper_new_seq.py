@@ -30,6 +30,7 @@ from datetime import datetime
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from datasets import load_dataset, Audio
 from jiwer import compute_measures
+from itertools import islice         # ← ADD THIS
 import warnings
 from tqdm import tqdm
 import time
@@ -131,8 +132,7 @@ def main():
 
     # REMOVED: Log directory creation and log file setup
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    torch_dtype = torch.float16 if device.startswith("cuda") in device else torch.float32
-
+    torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
     with tqdm(total=2, desc="Loading Model") as bar:
         # Flash Attention 2 for 3-5x speedup
