@@ -79,6 +79,9 @@ def process_batch(batch, processor, model, device, args, stats):
             logprob_threshold=-1.0,
             compression_ratio_threshold=1.35,
             condition_on_prev_tokens=False,
+            language="en",
+            task="transcribe",
+            return_legacy_cache=True
         )
     decode_time = time.time() - start
 
