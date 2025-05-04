@@ -71,7 +71,7 @@ def process_batch(batch, processor, model, device, args, stats):
             return_attention_mask=True,
             truncation=False
         ).to(device)
-
+        
         outputs = model.generate(
             **inputs,
             return_timestamps=True,
@@ -79,8 +79,6 @@ def process_batch(batch, processor, model, device, args, stats):
             logprob_threshold=-1.0,
             compression_ratio_threshold=1.35,
             condition_on_prev_tokens=False,
-            language="en",
-            task="transcribe",
             return_legacy_cache=True
         )
     decode_time = time.time() - start
@@ -154,6 +152,8 @@ def main():
             low_cpu_mem_usage=True
         )
         bar.update(1)
+        model.generation_config.task = "transcribe"
+        model.generation_config.language = "en"
         model.to(device)
         processor = AutoProcessor.from_pretrained(args.model)
         bar.update(1)
@@ -176,7 +176,7 @@ def main():
     stats = {"total_wer": 0.0, "count": 0, "rtf_list": [], "time": 0.0}
     all_results = []
 
-    trans_bar = tqdm(total=total_files, desc="Transcribing", unit="file")        
+    trans_bar = tqdm(total=total_files, desc="Transcribing", unit="file", colour="darkgreen")        
 
     # Process
     batch_num = 0
@@ -188,16 +188,16 @@ def main():
             trans_bar.update(len(batch))
 
             avg_batch_wer = round(sum(batch_wers)/len(batch_wers), 4) if batch_wers else None
-            trans_bar.set_postfix({
-                'batch_wer': avg_batch_wer if avg_batch_wer is not None else 'N/A',
-                'batch_time_s': f"{decode_time:.2f}"
-            })
+            # trans_bar.set_postfix({
+            #     'batch_wer': avg_batch_wer if avg_batch_wer is not None else 'N/A',
+            #     'batch_time_s': f"{decode_time:.2f}"
+            # })
             trans_bar.refresh()
 
-            tqdm.write(f"Batch {batch_num}: processed files → {names}")
+            print(f"Batch {batch_num}: processed files → {names}")
             if batch_wers:
-                tqdm.write(f"Batch WERs → {batch_wers} | avg WER: {avg_batch_wer}")
-            tqdm.write(f"Batch processing time → {decode_time:.2f}s\n")            
+                print(f"Batch WERs → {batch_wers} | avg WER: {avg_batch_wer}")
+            print(f"Batch processing time → {decode_time:.2f}s\n")            
 
             for e in entries:
                 wer_str = f"{e.get('wer'):.4f}" if 'wer' in e else 'N/A'
