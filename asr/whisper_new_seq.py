@@ -88,6 +88,8 @@ def process_batch(batch, processor, model, device, args, stats):
     batch_audio_dur = sum(len(arr) for arr in audio_arrays) / sampling_rate
 
     entries = []
+    batch_wers = []
+
     for path, text in zip(paths, decoded):
         pred = text["text"] if isinstance(text, dict) else text
         entry = {"audio_file_path": str(path), "pred_text": pred}
@@ -95,17 +97,21 @@ def process_batch(batch, processor, model, device, args, stats):
         if args.gold_standard:
             gold = read_gold_transcription(path)
             if gold:
+                entry["text"] = gold
                 measures = compute_measures(gold, pred)
-                for k in ('wer', 'mer', 'wil'):
-                    entry[k] = measures[k]
+                entry.update({k: measures[k] for k in ('wer', 'mer', 'wil')})
+                batch_wers.append(measures['wer'])                
                 stats['total_wer'] += measures['wer']
                 stats['count'] += 1
+            else:
+                entry["text"] = None
         entries.append(entry)
 
     # Update stats
     stats['rtf_list'].append(real_time_factor(decode_time, batch_audio_dur))
     stats['time'] += decode_time
-    return entries
+
+    return entries, decode_time, [p.name for p in paths], batch_wers
 
 def main():
     parser = argparse.ArgumentParser(description="Transcribe an audio file.")
@@ -135,7 +141,7 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
-    with tqdm(total=2, desc="Loading Model") as bar:
+    with tqdm(total=2, desc="Loading Model", unit="step") as bar:
         # Flash Attention 2 for 3-5x speedup
         model = WhisperForConditionalGeneration.from_pretrained(
             args.model,
@@ -170,17 +176,35 @@ def main():
     trans_bar = tqdm(total=total_files, desc="Transcribing", unit="file")        
 
     # Process
+    batch_nume = 0
     for batch in batch_iterator(data_iter, args.batch_size):
+        batch_num += 1
         try:
-            entries = process_batch(batch, processor, model, device, args, stats)
+            entries, decode_time, names, batch_wers = process_batch(batch, processor, model, device, args, stats)
             all_results.extend(entries)
             trans_bar.update(len(batch))
+
+            avg_batch_wer = round(sum(batch_wers)/len(batch_wers), 4) if batch_wers else None
+            trans_bar.set_postfix({
+                'batch_wer': avg_batch_wer if avg_batch_wer is not None else 'N/A',
+                'batch_time_s': f"{decode_time:.2f}"
+            })
+            trans_bar.refresh()
+
+            tqdm.write(f"Batch {batch_num}: processed files → {names}")
+            if batch_wers:
+                tqdm.write(f"Batch WERs → {batch_wers} | avg WER: {avg_batch_wer}")
+            tqdm.write(f"Batch processing time → {decode_time:.2f}s\n")            
+
             for e in entries:
-                logging.info(f"File: {e['audio_file_path']} → WER: {e.get('wer','N/A')}")
+                wer_str = f"{e.get('wer'):.4f}" if 'wer' in e else 'N/A'
+                logging.info(f"File: {e['audio_file_path']} → WER: {wer_str}")
+
         except Exception as e:
             logging.error(f"Batch error: {e}", exc_info=True)
+        finally:
         # free memory
-        torch.cuda.empty_cache()
+          torch.cuda.empty_cache()
 
     trans_bar.close()
 
