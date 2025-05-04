@@ -27,7 +27,7 @@ import logging
 import torch
 from pathlib import Path
 from datetime import datetime
-from transformers import WhisperProcessor, WhisperForConditionalGeneration
+from transformers import AutoProcessor, WhisperForConditionalGeneration
 from datasets import load_dataset, Audio
 from jiwer import compute_measures
 from itertools import islice         # ← ADD THIS
@@ -65,10 +65,11 @@ def process_batch(batch, processor, model, device, args, stats):
     with torch.inference_mode(), torch.cuda.amp.autocast():
         inputs = processor(
             audio_arrays,
-            sampling_rate=16000,
+            sampling_rate=16_000,
             return_tensors="pt",
             padding="longest",
-            return_attention_mask=True
+            return_attention_mask=True,
+            truncation=False
         ).to(device)
 
         outputs = model.generate(
@@ -145,7 +146,7 @@ def main():
         )
         bar.update(1)
         model.to(device)
-        processor = WhisperProcessor.from_pretrained(args.model)
+        processor = AutoProcessor.from_pretrained(args.model)
         bar.update(1)
     
     model.to(device)
