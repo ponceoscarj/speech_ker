@@ -176,7 +176,7 @@ def main():
     stats = {"total_wer": 0.0, "count": 0, "rtf_list": [], "time": 0.0}
     all_results = []
 
-    trans_bar = tqdm(total=total_files, desc="Transcribing", unit="file", colour="darkgreen")        
+    trans_bar = tqdm(total=total_files, desc="Transcribing", unit="file", colour="GREEN")        
 
     # Process
     batch_num = 0
