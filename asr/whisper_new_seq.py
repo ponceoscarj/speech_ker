@@ -23,13 +23,13 @@ In --output_dir insert the correct model, be as specific as possible (e.g., cana
 import argparse
 import json
 import os
-import sys
+import logging
 import torch
 from pathlib import Path
 from datetime import datetime
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, WhisperForConditionalGeneration
+from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from datasets import load_dataset, Audio
-import jiwer
+from jiwer import compute_measures
 import warnings
 from tqdm import tqdm
 import time
@@ -43,17 +43,67 @@ def real_time_factor(processingTime, audioLength, decimals=4):
     return None
   return round(processingTime / audioLength, decimals)
 
-def read_gold_transcription(audio_path):
-    audio_path = Path(audio_path).resolve()
+def read_gold_transcription(audio_path: Path) -> str | None:
     txt_path = audio_path.with_suffix('.txt')
-    if txt_path.exists():
-        return txt_path.read_text().strip()
-    return None
+    return txt_path.read_text().strip() if txt_path.exists() else None
 
 def calculate_wer(reference, hypothesis):
     return jiwer.wer(reference, hypothesis)
 
-# REMOVED: Tee class and log file handling
+def batch_iterator(iterator, batch_size: int):
+    while batch := list(islice(iterator, batch_size)):
+        yield batch
+
+def process_batch(batch, processor, model, device, args, stats):
+    # Extract arrays & paths
+    audio_arrays = [ex['audio']['array'] for ex in batch]
+    paths = [Path(ex['audio']['path']).resolve() for ex in batch]
+
+    # Inference
+    start = time.time()
+    with torch.inference_mode(), torch.cuda.amp.autocast():
+        inputs = processor(
+            audio_arrays,
+            sampling_rate=16000,
+            return_tensors="pt",
+            padding="longest",
+            return_attention_mask=True
+        ).to(device)
+
+        outputs = model.generate(
+            **inputs,
+            return_timestamps=True,
+            temperature=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
+            logprob_threshold=-1.0,
+            compression_ratio_threshold=1.35,
+            condition_on_prev_tokens=False,
+        )
+    decode_time = time.time() - start
+
+    # Decode & record
+    decoded = processor.batch_decode(outputs, skip_special_tokens=True)
+    sampling_rate = processor.feature_extractor.sampling_rate
+    batch_audio_dur = sum(len(arr) for arr in audio_arrays) / sampling_rate
+
+    entries = []
+    for path, text in zip(paths, decoded):
+        pred = text["text"] if isinstance(text, dict) else text
+        entry = {"audio_file_path": str(path), "pred_text": pred}
+
+        if args.gold_standard:
+            gold = read_gold_transcription(path)
+            if gold:
+                measures = compute_measures(gold, pred)
+                for k in ('wer', 'mer', 'wil'):
+                    entry[k] = measures[k]
+                stats['total_wer'] += measures['wer']
+                stats['count'] += 1
+        entries.append(entry)
+
+    # Update stats
+    stats['rtf_list'].append(real_time_factor(decode_time, batch_audio_dur))
+    stats['time'] += decode_time
+    return entries
 
 def main():
     parser = argparse.ArgumentParser(description="Transcribe an audio file.")
@@ -76,13 +126,15 @@ def main():
 
     args = parser.parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
+    logging.basicConfig(level=logging.INFO, filename=Path(args.output_dir)/"transcription.log",
+                        format="%(asctime)s %(levelname)s: %(message)s")
 
     # REMOVED: Log directory creation and log file setup
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    torch_dtype = torch.float16 if "cuda" in device else torch.float32
+    torch_dtype = torch.float16 if device.startswith("cuda") in device else torch.float32
 
 
-    with tqdm(total=3, desc="Loading Model") as bar:
+    with tqdm(total=2, desc="Loading Model") as bar:
         # Flash Attention 2 for 3-5x speedup
         model = WhisperForConditionalGeneration.from_pretrained(
             args.model,
@@ -92,207 +144,63 @@ def main():
             low_cpu_mem_usage=True
         )
         bar.update(1)
-        model.to("cuda")
-
-        if getattr(model.generation_config, "is_multilingual", False):
-          model.generation_config.language = "en"
-        #   model.generation_config.task = "transcribe"
-
-        # model = torch.compile(model)
-        processor = AutoProcessor.from_pretrained(args.model)
+        model.to(device)
+        processor = WhisperProcessor.from_pretrained(args.model)
         bar.update(1)
-
-    with tqdm(total=3, desc="Loading Data") as bar:
-        # Parallel audio loading with memory mapping
-        dataset = load_dataset("audiofolder", data_dir=args.input_dir)["train"]
-        bar.update(1)
-        
-        # Resample to 16kHz in parallel
-        dataset = dataset.cast_column("audio", Audio(sampling_rate=16000))
-        bar.update(1)
-
-        # Prepare file paths
-        audio_paths = [str(Path(x['audio']['path']).resolve()) for x in dataset]
-        bar.update(1)    
-
-        # load all the audios once only
-        audio_arrays = [x['audio']['array'] for x in dataset]
-
-        # Calculate total audio duration (manually from samples and rate)
-        total_audio_duration = sum([len(x['audio']['array']) / x['audio']['sampling_rate'] for x in dataset])
-
-    total_files = len(dataset)
-    main_bar = tqdm(total=total_files, desc="Transcribing", unit="file")
-    wer_bar = tqdm(total=total_files, desc="WER_calculation", leave=False)
-
-    results = []
-    total_wer = 0
-    valid_wer_count = 0
-    start_time = time.time()
-    batch_rtf_list = []
-
     
-    try:
-        for i in range(0, len(dataset), args.batch_size):
-            batch = dataset[i:i+args.batch_size]
-            batch_audio_arrays = audio_arrays[i:i+args.batch_size]
-            batch_paths = audio_paths[i:i+args.batch_size]
-            
-            # Show current file being processed
-            main_bar.set_postfix(file=os.path.basename(batch_paths[0]))
-          
-            # Start batch timer
-            batch_start_time = time.time()
+    model.to(device)
 
-            with torch.inference_mode():
-              with torch.cuda.amp.autocast():
-                inputs = processor(batch_audio_arrays, return_tensors="pt", truncation=False, padding="longest", return_attention_mask=True, sampling_rate=16_000)
-                inputs = inputs.to("cuda", torch.float16)
-                result = model.generate(**inputs, condition_on_prev_tokens=False, temperature=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0), logprob_threshold=-1.0, compression_ratio_threshold=1.35, return_timestamps=True)
-                outputs = processor.batch_decode(result, skip_special_tokens=True)
+    exts = {e.lower() for e in args.extensions}
+    audio_files = [p for p in Path(args.input_dir).rglob("*")
+                   if p.suffix.lower() in exts]
+    total_files = len(audio_files)
+    if total_files == 0:
+        logging.error("No audio files found. Exiting.")
+        return
 
-                
-
-            # End batch timer
-            batch_end_time = time.time()
-            batch_processing_time = batch_end_time - batch_start_time
-  
-            # Calculate batch audio duration
-            batch_audio_duration = sum([len(arr) / 16000 for arr in batch_audio_arrays])
-        
-            # Calculate batch RTF
-            batch_rtf = real_time_factor(batch_processing_time, batch_audio_duration)
-
-            # Prepare batch information message
-            batch_num = i // args.batch_size + 1
-            batch_info = [
-                f"Batch {batch_num} completed",
-                f"Files: {len(batch_paths)}",
-                f"Time: {batch_processing_time:.2f}s",
-                f"RTF: {batch_rtf:.4f}" if batch_rtf is not None else "RTF: N/A"
-            ]
-
-           
-            # Process results
-            batch_wer = []
-            for path, result in zip(batch_paths, outputs):
-                pred_text = result["text"] if isinstance(result, dict) else result                
-                entry = {
-                    "audio_file_path": path,
-                    "pred_text": pred_text
-                }
-                
-                # WER calculation
-                
-                if args.gold_standard:
-                    gold_text = read_gold_transcription(path)
-                    entry["text"] = gold_text or "N/A"
-                    
-                    if gold_text:
-                        wer = calculate_wer(entry["text"], entry["pred_text"])
-                        entry["wer"] = wer
-                        total_wer += wer
-                        valid_wer_count += 1
-                        wer_bar.update(1)
-                        wer_bar.set_postfix(current_wer=f"{wer:.2f}")
-                      
-            
-                  
-                results.append(entry)
-                main_bar.update(1)
-                
-            # Add WER information to batch message if applicable
-            if args.gold_standard and batch_wer:
-                avg_wer = sum(batch_wer) / len(batch_wer)
-                batch_info.append(f"Avg WER: {avg_wer:.2f}")
-
-            # Print consolidated batch information
-            print(", ".join(batch_info))
-
-    finally:
-        main_bar.close()
-        wer_bar.close()
-      
-    end_time = time.time()
-    processing_time = end_time - start_time
-
-    # ====================== Save Results ======================
-    rtf = real_time_factor(processing_time, total_audio_duration)
-    total_audio_minutes = total_audio_duration / 60
+    dataset = load_dataset("audiofolder", data_dir=args.input_dir, streaming=True)["train"]
+    dataset = dataset.cast_column("audio", Audio(sampling_rate=processor.feature_extractor.sampling_rate))
+    data_iter = iter(dataset)
 
 
-    if args.output_filename:
-      results_file = os.path.join(args.output_dir, f"{args.output_filename}.json")
-      meta_file    = os.path.join(args.output_dir, f"{args.output_filename}_meta.json")
-    else: 
-      results_file = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}.json")
-      meta_file    = os.path.join(args.output_dir, f"results_{datetime.now().isoformat()}_meta.json")
+    stats = {"total_wer": 0.0, "count": 0, "rtf_list": [], "time": 0.0}
+    all_results = []
 
-    print('\ncrisperwhisper_opt.py\n','input_dir', args.input_dir)
-    print('results_file', results_file, '\n')
+    trans_bar = tqdm(total=total_files, desc="Transcribing", unit="file")        
 
+    # Process
+    for batch in batch_iterator(data_iter, args.batch_size):
+        try:
+            entries = process_batch(batch, processor, model, device, args, stats)
+            all_results.extend(entries)
+            trans_bar.update(len(batch))
+            for e in entries:
+                logging.info(f"File: {e['audio_file_path']} → WER: {e.get('wer','N/A')}")
+        except Exception as e:
+            logging.error(f"Batch error: {e}", exc_info=True)
+        # free memory
+        torch.cuda.empty_cache()
 
-    with open(results_file, "w") as f:
-      for entry in results: 
-        f.write(json.dumps(entry) + "\n") 
+    trans_bar.close()
 
+    # Save outputs
+    timestamp = args.output_filename or datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_base = Path(args.output_dir)/f"results_{timestamp}"
+    with open(f"{out_base}.json", "w") as f:
+        json.dump(all_results, f, indent=2)
+
+    # Metadata
+    avg_wer = stats['total_wer']/stats['count'] if stats['count'] else 0.0
     meta = {
-      "processing_time_seconds": processing_time,
-      "total_audio_duration_seconds": total_audio_duration,
-      "real_time_factor": rtf,
-      "batch_rtf_list": batch_rtf_list
+        "processing_time": stats['time'],
+        "real_time_factor": sum(stats['rtf_list'])/len(stats['rtf_list']) if stats['rtf_list'] else None,
+        "average_wer": avg_wer,
+        "batches_processed": len(stats['rtf_list']),
     }
-    with open(meta_file, "w") as f:
+    with open(f"{out_base}_meta.json", "w") as f:
         json.dump(meta, f, indent=2)
 
-    print(f"Transcriptions saved to {results_file}")
-    print(f"Run metadata saved to   {meta_file}")
-    print(f"Total Processing Time: {processing_time:.2f} seconds")
-    print(f"Total Audio Duration: {total_audio_minutes:.2f} minutes")
-
-    if rtf is not None:
-      print(f"\nReal-Time Factor (RTF): {rtf}")
-    else:
-      print("\nWarning: Total audio duration is zero, cannot calculate RTF.")
-  
-    if args.gold_standard and valid_wer_count > 0:
-        print(f"\nAverage WER: {total_wer/valid_wer_count:.2f}")
-    print(f"\nProcessing complete. Results saved to {results_file}")
+    print(f"Done! Results → {out_base}.json, {out_base}_meta.json")
 
 if __name__ == "__main__":
     main()
-    if torch.cuda.is_available():
-      torch.cuda.empty_cache()
-      print("\n[INFO] GPU cache cleared successfully.")
-
-
-#### Previous original code
-        
-# processor = AutoProcessor.from_pretrained("/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/whisper-large-v3")
-# model = WhisperForConditionalGeneration.from_pretrained("/home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/whisper-large-v3", torch_dtype=torch.float16)
-# model.to("cuda")
-
-# rertieve 8 long audio sequences
-# print('loading dataset')
-# ds = load_dataset("/home/ext_ponceponte_oscar_mayo_edu/speech_ker/audio_files/audio_files")["train"]
-# ds = ds.cast_column("audio", Audio(sampling_rate=16000))
-# print('Taking batch size of 8')
-# # ds = ds[:8] # take batch size of 8
-# # print(ds)
-
-# print('printing audio list')
-
-# for i in ds["audio"]:
-#     print(i)
-
-# raw_audio = [x["array"].astype(np.float32) for x in ds["audio"]]
-
-# # process input, make sure to pass `padding='longest'` and `return_attention_mask=True`
-# inputs = processor(raw_audio, return_tensors="pt", truncation=False, padding="longest", return_attention_mask=True, sampling_rate=16_000)
-# inputs = inputs.to("cuda", torch.float16)
-
-# # activate `temperature_fallback` and repetition detection filters and condition on prev text
-# result = model.generate(**inputs, condition_on_prev_tokens=False, temperature=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0), logprob_threshold=-1.0, compression_ratio_threshold=1.35, return_timestamps=True)
-
-# decoded = processor.batch_decode(result, skip_special_tokens=True)
-# print(decoded)
