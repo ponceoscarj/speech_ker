@@ -176,7 +176,7 @@ def main():
     trans_bar = tqdm(total=total_files, desc="Transcribing", unit="file")        
 
     # Process
-    batch_nume = 0
+    batch_num = 0
     for batch in batch_iterator(data_iter, args.batch_size):
         batch_num += 1
         try:
