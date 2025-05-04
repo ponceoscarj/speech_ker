@@ -227,7 +227,7 @@ def main():
         "batches_processed": len(stats['rtf_list']),
     }
     with open(f"{out_base}_meta.json", "w") as f:
-        json.dump(meta, f, indent=2)
+        f.write(json.dumps(meta) + '\n')
 
     print(f"Done! Results → {out_base}.json, {out_base}_meta.json")
 
