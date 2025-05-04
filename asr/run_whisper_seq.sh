@@ -265,7 +265,7 @@ main() {
         echo -e "\n=== Processing Configuration ${count}/${total_configs} ==="
         run_experiment "${batch_size}" "${experiment_dir}"
         ((count++))
-        done
+        
     done
 
     echo -e "\n=== All Experiments Completed ==="
