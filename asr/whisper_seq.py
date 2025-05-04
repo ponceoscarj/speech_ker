@@ -229,6 +229,7 @@ def main():
     with open(f"{out_base}_meta.json", "w") as f:
         f.write(json.dumps(meta) + '\n')
 
+    print(f"Overall average WER: {avg_wer:.4f}")
     print(f"Done! Results → {out_base}.json, {out_base}_meta.json")
 
 if __name__ == "__main__":
