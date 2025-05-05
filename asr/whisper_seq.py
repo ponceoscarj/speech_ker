@@ -136,7 +136,7 @@ def main():
                      help="Batch size for processing")
     parser.add_argument("--timestamps", choices=["word", "segment", "none"], default="word",
                      help="Type of timestamps to include")
-    parser.add_argument("--return_legacy_cache", action="type=str2bool", default=False,
+    parser.add_argument("--return_legacy_cache", type="type=str2bool", default=False,
                      help="Whether to return the legacy decoder cache")
     parser.add_argument("--extensions", nargs="+", default=[".wav", ".mp3", ".flac"],
                      help="Audio file extensions to process")
