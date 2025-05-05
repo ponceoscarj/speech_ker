@@ -21,6 +21,7 @@
 #   --timestamp "none" \
 #   --extensions ".wav" \
 #   --sleep-time 10
+#   --return_legacy_cache true
 
 
 # ==============================================================================
