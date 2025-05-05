@@ -79,7 +79,7 @@ def process_batch(batch, processor, model, device, args, stats):
             logprob_threshold=-1.0,
             compression_ratio_threshold=1.35,
             condition_on_prev_tokens=False,
-            return_legacy_cache=True
+            return_legacy_cache=args.return_legacy_cache
         )
     decode_time = time.time() - start
 
@@ -128,6 +128,8 @@ def main():
                      help="Batch size for processing")
     parser.add_argument("--timestamps", choices=["word", "segment", "none"], default="word",
                      help="Type of timestamps to include")
+    parser.add_argument("--return_legacy_cache", action="store_true", default=False,
+                     help="Whether to return the legacy decoder cache")
     parser.add_argument("--extensions", nargs="+", default=[".wav", ".mp3", ".flac"],
                      help="Audio file extensions to process")
     parser.add_argument("--gold_standard", action="store_true",default=True,
