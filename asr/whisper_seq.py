@@ -34,6 +34,8 @@ from itertools import islice         # ← ADD THIS
 import warnings
 from tqdm import tqdm
 import time
+from distutils.util import strtobool
+
 
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -43,6 +45,12 @@ def real_time_factor(processingTime, audioLength, decimals=4):
   if audioLength == 0:
     return None
   return round(processingTime / audioLength, decimals)
+
+def str2bool(v):
+  try:
+    return bool(strtobool(v))
+  except ValueError:
+    raise argparse.ArgumentTypeError("Boolean value expected (true/false)")
 
 def read_gold_transcription(audio_path: Path) -> str | None:
     txt_path = audio_path.with_suffix('.txt')
@@ -128,7 +136,7 @@ def main():
                      help="Batch size for processing")
     parser.add_argument("--timestamps", choices=["word", "segment", "none"], default="word",
                      help="Type of timestamps to include")
-    parser.add_argument("--return_legacy_cache", action="store_true", default=False,
+    parser.add_argument("--return_legacy_cache", action="type=str2bool", default=False,
                      help="Whether to return the legacy decoder cache")
     parser.add_argument("--extensions", nargs="+", default=[".wav", ".mp3", ".flac"],
                      help="Audio file extensions to process")
