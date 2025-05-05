@@ -33,6 +33,7 @@ readonly DEFAULT_BATCHES=(4 2)
 readonly DEFAULT_TIMESTAMP="none"
 readonly DEFAULT_EXTENSION=".wav"
 readonly DEFAULT_SLEEP=2
+readonly DEFAULT_RETURN_LEGACY_CACHE="false"
 
 # ==============================================================================
 # Initialize variables with default values
@@ -63,6 +64,7 @@ Optional Parameters:
   -e, --extensions EXT              File extension to process (default: ".wav")
   -s, --sleep-time SECONDS          Sleep between runs (default: 2)
   -h, --help                        Show this help message
+  -r, --return-legacy-cache <true|false>  Enable legacy cache in Whisper.generate (default: false)
 EOF
   exit 0
 }
@@ -149,6 +151,9 @@ parse_parameters() {
                 sleep_time="$2"
                 validate_positive_integer "${sleep_time}" "Sleep time"
                 shift 2 ;;
+            -r|--return-legacy-cache)
+                return_legacy_cache="$2"
+                shift 2 ;;
             -h|--help) show_help ;;
             --) shift; break ;;
             *) echo "Invalid option: $1"; exit 1 ;;
@@ -223,6 +228,7 @@ run_experiment() {
             --model "${model}" \
             --batch_size "${batch_size}" \
             --timestamps "${timestamp}" \
+            --return_legacy_cache "${return_legacy_cache}" \ 
             --extensions "${extensions}" \
             --gold_standard || {
                 echo "ERROR: Transcription failed for batch ${batch_size}"
