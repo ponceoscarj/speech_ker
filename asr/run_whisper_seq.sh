@@ -229,7 +229,7 @@ run_experiment() {
             --model "${model}" \
             --batch_size "${batch_size}" \
             --timestamps "${timestamp}" \
-            --return_legacy_cache "${return_legacy_cache}" \ 
+            --return_legacy_cache "${return_legacy_cache}" \
             --extensions "${extensions}" \
             --gold_standard || {
                 echo "ERROR: Transcription failed for batch ${batch_size}"
