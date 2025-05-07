@@ -106,6 +106,7 @@ def process_batch(batch, processor, model, device, args, stats):
 
         if args.gold_standard:
             gold = read_gold_transcription(path)
+            print(f"[DEBUG] read_gold_transcription({path.name}) → {gold!r}")
             if gold:
                 entry["text"] = gold
                 measures = compute_measures(gold, pred)
@@ -179,6 +180,7 @@ def main():
         logging.error("No audio files found. Exiting.")
         return
 
+    print(f"[DEBUG] Found {total_files} audio files in {args.input_dir!r}")
     dataset = load_dataset("audiofolder", data_dir=args.input_dir, streaming=True)["train"]
     dataset = dataset.cast_column("audio", Audio(sampling_rate=processor.feature_extractor.sampling_rate))
     data_iter = iter(dataset)
@@ -194,7 +196,10 @@ def main():
     for batch in batch_iterator(data_iter, args.batch_size):
         batch_num += 1
         try:
+            print(f"[DEBUG] Starting batch #{batch_num+1} with {len(batch)} files")
             entries, decode_time, names, batch_wers = process_batch(batch, processor, model, device, args, stats)
+            num_with_gold = sum(1 for e in entries if e.get("text") is not None)
+            print(f"[DEBUG]   → {num_with_gold}/{len(entries)} have gold transcripts")
             all_results.extend(entries)
             trans_bar.update(len(batch))
 
