@@ -7,7 +7,8 @@
 Modification of https://github.com/nyrahealth/CrisperWhisper/blob/main/transcribe.py 
 
 Example:
-python crisperwhisper.py --input_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
+python crisperwhisper.py 
+                --input_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
                 --output_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/output/CrisperWhisper \
                 --model /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/models/CrisperWhisper \
                 --output_dir sequential_whisper_largeV3 \
@@ -86,8 +87,8 @@ def process_batch(batch, processor, model, device, args, stats):
             temperature=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
             logprob_threshold=-1.0,
             compression_ratio_threshold=1.35,
-            condition_on_prev_tokens=False,
-            return_legacy_cache=args.return_legacy_cache
+            condition_on_prev_tokens=args.condition_on_prev_tokens,
+            return_legacy_cache=True
         )
     decode_time = time.time() - start
 
@@ -136,8 +137,8 @@ def main():
                      help="Batch size for processing")
     parser.add_argument("--timestamps", choices=["word", "segment", "none"], default="word",
                      help="Type of timestamps to include")
-    parser.add_argument("--return_legacy_cache", type=str2bool, default=False,
-                     help="Whether to return the legacy decoder cache")
+    parser.add_argument("--condition_on_prev_tokens", type=str2bool, default=False,
+                     help="Whether to condition on previous tokens during generate")
     parser.add_argument("--extensions", nargs="+", default=[".wav", ".mp3", ".flac"],
                      help="Audio file extensions to process")
     parser.add_argument("--gold_standard", action="store_true",default=True,
