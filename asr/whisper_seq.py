@@ -7,8 +7,7 @@
 Modification of https://github.com/nyrahealth/CrisperWhisper/blob/main/transcribe.py 
 
 Example:
-python crisperwhisper.py 
-                --input_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
+python crisperwhisper.py --input_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/audio_files \
                 --output_dir /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/output/CrisperWhisper \
                 --model /Users/oscarponce/Documents/PythonProjects/speech_ker/asr/models/CrisperWhisper \
                 --output_dir sequential_whisper_largeV3 \
@@ -35,8 +34,6 @@ from itertools import islice         # ← ADD THIS
 import warnings
 from tqdm import tqdm
 import time
-from distutils.util import strtobool
-
 
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -46,12 +43,6 @@ def real_time_factor(processingTime, audioLength, decimals=4):
   if audioLength == 0:
     return None
   return round(processingTime / audioLength, decimals)
-
-def str2bool(v):
-  try:
-    return bool(strtobool(v))
-  except ValueError:
-    raise argparse.ArgumentTypeError("Boolean value expected (true/false)")
 
 def read_gold_transcription(audio_path: Path) -> str | None:
     txt_path = audio_path.with_suffix('.txt')
@@ -87,7 +78,7 @@ def process_batch(batch, processor, model, device, args, stats):
             temperature=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
             logprob_threshold=-1.0,
             compression_ratio_threshold=1.35,
-            condition_on_prev_tokens=args.condition_on_prev_tokens,
+            condition_on_prev_tokens=False,
             return_legacy_cache=True
         )
     decode_time = time.time() - start
@@ -106,7 +97,6 @@ def process_batch(batch, processor, model, device, args, stats):
 
         if args.gold_standard:
             gold = read_gold_transcription(path)
-            print(f"[DEBUG] read_gold_transcription({path.name}) → {gold!r}")
             if gold:
                 entry["text"] = gold
                 measures = compute_measures(gold, pred)
@@ -138,8 +128,6 @@ def main():
                      help="Batch size for processing")
     parser.add_argument("--timestamps", choices=["word", "segment", "none"], default="word",
                      help="Type of timestamps to include")
-    parser.add_argument("--condition_on_prev_tokens", type=str2bool, default=False,
-                     help="Whether to condition on previous tokens during generate")
     parser.add_argument("--extensions", nargs="+", default=[".wav", ".mp3", ".flac"],
                      help="Audio file extensions to process")
     parser.add_argument("--gold_standard", action="store_true",default=True,
@@ -180,7 +168,6 @@ def main():
         logging.error("No audio files found. Exiting.")
         return
 
-    print(f"[DEBUG] Found {total_files} audio files in {args.input_dir!r}")
     dataset = load_dataset("audiofolder", data_dir=args.input_dir, streaming=True)["train"]
     dataset = dataset.cast_column("audio", Audio(sampling_rate=processor.feature_extractor.sampling_rate))
     data_iter = iter(dataset)
@@ -196,10 +183,7 @@ def main():
     for batch in batch_iterator(data_iter, args.batch_size):
         batch_num += 1
         try:
-            print(f"[DEBUG] Starting batch #{batch_num+1} with {len(batch)} files")
             entries, decode_time, names, batch_wers = process_batch(batch, processor, model, device, args, stats)
-            num_with_gold = sum(1 for e in entries if e.get("text") is not None)
-            print(f"[DEBUG]   → {num_with_gold}/{len(entries)} have gold transcripts")
             all_results.extend(entries)
             trans_bar.update(len(batch))
 
@@ -231,7 +215,8 @@ def main():
     timestamp = args.output_filename or datetime.now().strftime("%Y%m%d_%H%M%S")
     out_base = Path(args.output_dir)/f"{timestamp}"
     with open(f"{out_base}.json", "w") as f:
-            json.dump(all_results, f, indent=2)
+        for entry in all_results:
+            f.write(json.dumps(entry) + '\n')
 
     # Metadata
     avg_wer = stats['total_wer']/stats['count'] if stats['count'] else 0.0
