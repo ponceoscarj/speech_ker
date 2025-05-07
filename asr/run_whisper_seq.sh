@@ -21,7 +21,6 @@
 #   --timestamp "none" \
 #   --extensions ".wav" \
 #   --sleep-time 10
-#   --condition_on_prev_tokens true
 
 
 # ==============================================================================
@@ -33,7 +32,6 @@ readonly DEFAULT_BATCHES=(4 2)
 readonly DEFAULT_TIMESTAMP="none"
 readonly DEFAULT_EXTENSION=".wav"
 readonly DEFAULT_SLEEP=2
-readonly DEFAULT_CONDITION_ON_PREV_TOKENS="false"
 
 # ==============================================================================
 # Initialize variables with default values
@@ -45,7 +43,6 @@ batch_sizes=("${DEFAULT_BATCHES[@]}")
 timestamp="$DEFAULT_TIMESTAMP"
 extensions="$DEFAULT_EXTENSION"
 sleep_time="$DEFAULT_SLEEP"
-condition_on_prev_tokens="$DEFAULT_CONDITION_ON_PREV_TOKENS"
 
 # ==============================================================================
 # Helper Functions
@@ -65,7 +62,6 @@ Optional Parameters:
   -e, --extensions EXT              File extension to process (default: ".wav")
   -s, --sleep-time SECONDS          Sleep between runs (default: 2)
   -h, --help                        Show this help message
-  -c, --condition-on-prev-tokens <true|false>  Condition on previous tokens in generate (default: false)
 EOF
   exit 0
 }
@@ -115,12 +111,12 @@ validate_timestamp() {
 # ==============================================================================
 parse_parameters() {
     local parsed_args
-    parsed_args=$(getopt -o m:i:o:b:t:e:s:h:c: \
-                --long model:,input-dir:,output-dir:,batch-sizes:,timestamp:,extensions:,sleep-time:,condition-on-prev-tokens:,help \
+    parsed_args=$(getopt -o m:i:o:b:t:e:s:h \
+                --long model:,input-dir:,output-dir:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
                 -n "$0" -- "$@") || { show_help; exit 1; }
     # parsed_args=$(/usr/local/opt/gnu-getopt/bin/getopt \
     # -o m:i:o:c:b:t:e:s:h \
-    # --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,condition-on-prev-tokens:,help \
+    # --long model:,input-dir:,output-dir:,chunk-lengths:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
     # -n "$0" -- "$@") || { show_help; exit 1; }
     
     eval set -- "${parsed_args}"
@@ -151,9 +147,6 @@ parse_parameters() {
             -s|--sleep-time)
                 sleep_time="$2"
                 validate_positive_integer "${sleep_time}" "Sleep time"
-                shift 2 ;;
-            -c|--condition-on-prev-tokens)
-                condition_on_prev_tokens="$2"
                 shift 2 ;;
             -h|--help) show_help ;;
             --) shift; break ;;
@@ -229,7 +222,6 @@ run_experiment() {
             --model "${model}" \
             --batch_size "${batch_size}" \
             --timestamps "${timestamp}" \
-            --condition_on_prev_tokens "${condition_on_prev_tokens}" \
             --extensions "${extensions}" \
             --gold_standard || {
                 echo "ERROR: Transcription failed for batch ${batch_size}"
