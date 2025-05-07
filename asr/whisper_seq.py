@@ -231,8 +231,7 @@ def main():
     timestamp = args.output_filename or datetime.now().strftime("%Y%m%d_%H%M%S")
     out_base = Path(args.output_dir)/f"{timestamp}"
     with open(f"{out_base}.json", "w") as f:
-        for entry in all_results:
-            f.write(json.dumps(entry) + '\n')
+            json.dump(all_results, f, indent=2)
 
     # Metadata
     avg_wer = stats['total_wer']/stats['count'] if stats['count'] else 0.0
