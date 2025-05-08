@@ -113,8 +113,8 @@ validate_timestamp() {
 # ==============================================================================
 parse_parameters() {
     local parsed_args
-    parsed_args=$(getopt -o m:i:o:b:t:e:s:h \
-                --long model:,input-dir:,output-dir:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
+    parsed_args=$(getopt -o m:i:o:b:t:e:s:ch \
+                --long model:,input-dir:,output-dir:,batch-sizes:,timestamp:,extensions:,sleep-time:,condition-on-prev-tokens,help \
                 -n "$0" -- "$@") || { show_help; exit 1; }
     # parsed_args=$(/usr/local/opt/gnu-getopt/bin/getopt \
     # -o m:i:o:c:b:t:e:s:h \
