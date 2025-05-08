@@ -33,6 +33,7 @@ readonly DEFAULT_TIMESTAMP="none"
 readonly DEFAULT_EXTENSION=".wav"
 readonly DEFAULT_SLEEP=2
 
+condition_on_prev_tokens=""
 # ==============================================================================
 # Initialize variables with default values
 # ==============================================================================
@@ -60,6 +61,7 @@ Optional Parameters:
   -b, --batch-sizes SIZES           Space-separated batch sizes (default: "4 2")
   -t, --timestamp TYPE              Timestamp type ("word", "segment", or "none") (default: none)
   -e, --extensions EXT              File extension to process (default: ".wav")
+  -c, --condition-on-prev-tokens    Enable “condition_on_prev_tokens” in generation (default: off)
   -s, --sleep-time SECONDS          Sleep between runs (default: 2)
   -h, --help                        Show this help message
 EOF
@@ -148,6 +150,9 @@ parse_parameters() {
                 sleep_time="$2"
                 validate_positive_integer "${sleep_time}" "Sleep time"
                 shift 2 ;;
+            -c|--condition-on-prev-tokens)
+                condition_on_prev_tokens="--condition_on_prev_tokens"
+                shift ;;
             -h|--help) show_help ;;
             --) shift; break ;;
             *) echo "Invalid option: $1"; exit 1 ;;
@@ -223,6 +228,7 @@ run_experiment() {
             --batch_size "${batch_size}" \
             --timestamps "${timestamp}" \
             --extensions "${extensions}" \
+            $condition_on_prev_tokens \
             --gold_standard || {
                 echo "ERROR: Transcription failed for batch ${batch_size}"
                 exit 1
