@@ -191,6 +191,7 @@ Batch Sizes:   "${batch_sizes[*]}"
 Timestamp:     "${timestamp}"
 Extensions:    "${extensions}"
 Sleep Time:    ${sleep_time}
+Condition on Previous Tokens: ${condition_on_prev_tokens:+Yes}
 =============================
 EOF
 }
@@ -209,6 +210,7 @@ run_experiment() {
     echo "Running configuration:"
     echo "  - Batch size: ${batch_size}"
     echo "  - Timestamp: ${timestamp}"
+    echo "  - Condition on previous tokens: ${condition_on_prev_tokens}"
     echo "  - Output filename: ${output_filename}"
     echo "  - Input for new_wer_calculator.py: ${model_dir_name}/${output_filename}.json"
     # === FIX 2: Create directory for log ===
@@ -262,6 +264,7 @@ main() {
     echo "Input Directory: ${input_dir}"
     echo "Output Directory: ${experiment_dir}"
     echo "Timestamp Type: ${timestamp}"
+    echo "Condition on Prev Tokens: ${condition_on_prev_tokens:+Yes}"
     echo "Total Configurations: ${total_configs}"
     echo "----------------------------------------"
 
