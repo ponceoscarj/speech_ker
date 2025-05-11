@@ -34,6 +34,7 @@ import time
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
+warnings.filterwarnings("ignore", category=UserWarning, module="torch.utils.data.dataloader")
 
 def real_time_factor(processingTime, audioLength, decimals=4):
   if audioLength == 0:
