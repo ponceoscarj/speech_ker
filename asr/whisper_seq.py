@@ -55,7 +55,7 @@ def batch_iterator(iterator, batch_size: int):
     while batch := list(islice(iterator, batch_size)):
         yield batch
 
-def process_batch(batch, processor, model, device, args, stats):
+def process_batch(batch, processor, model, device, args, stats,batch_num):
     # Extract arrays & paths
     audio_arrays = [ex['audio']['array'] for ex in batch]
     paths = [Path(ex['audio']['path']).resolve() for ex in batch]
