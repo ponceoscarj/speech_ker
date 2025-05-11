@@ -78,7 +78,7 @@ def process_batch(batch, processor, model, device, args, stats):
             temperature=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
             logprob_threshold=-1.0,
             compression_ratio_threshold=1.35,
-            condition_on_prev_tokens=args.condition_on_prev_tokens,
+            condition_on_prev_tokens=False,
             return_legacy_cache=True
         )
     decode_time = time.time() - start
@@ -132,8 +132,6 @@ def main():
                      help="Audio file extensions to process")
     parser.add_argument("--gold_standard", action="store_true",default=True,
                        help="Enable WER calculation using gold standard transcriptions")
-    parser.add_argument("--condition_on_prev_tokens",action="store_true",default=False,
-                       help="If set, pass condition_on_prev_tokens=True to model.generate()")
 
     args = parser.parse_args()
     os.makedirs(args.output_dir, exist_ok=True)

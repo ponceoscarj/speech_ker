@@ -33,7 +33,6 @@ readonly DEFAULT_TIMESTAMP="none"
 readonly DEFAULT_EXTENSION=".wav"
 readonly DEFAULT_SLEEP=2
 
-condition_on_prev_tokens=""
 # ==============================================================================
 # Initialize variables with default values
 # ==============================================================================
@@ -61,7 +60,6 @@ Optional Parameters:
   -b, --batch-sizes SIZES           Space-separated batch sizes (default: "4 2")
   -t, --timestamp TYPE              Timestamp type ("word", "segment", or "none") (default: none)
   -e, --extensions EXT              File extension to process (default: ".wav")
-  -c, --condition-on-prev-tokens    Enable “condition_on_prev_tokens” in generation (default: off)
   -s, --sleep-time SECONDS          Sleep between runs (default: 2)
   -h, --help                        Show this help message
 EOF
@@ -113,8 +111,8 @@ validate_timestamp() {
 # ==============================================================================
 parse_parameters() {
     local parsed_args
-    parsed_args=$(getopt -o m:i:o:b:t:e:s:ch \
-                --long model:,input-dir:,output-dir:,batch-sizes:,timestamp:,extensions:,sleep-time:,condition-on-prev-tokens,help \
+    parsed_args=$(getopt -o m:i:o:b:t:e:s:h \
+                --long model:,input-dir:,output-dir:,batch-sizes:,timestamp:,extensions:,sleep-time:,help \
                 -n "$0" -- "$@") || { show_help; exit 1; }
     # parsed_args=$(/usr/local/opt/gnu-getopt/bin/getopt \
     # -o m:i:o:c:b:t:e:s:h \
@@ -150,9 +148,6 @@ parse_parameters() {
                 sleep_time="$2"
                 validate_positive_integer "${sleep_time}" "Sleep time"
                 shift 2 ;;
-            -c|--condition-on-prev-tokens)
-                condition_on_prev_tokens="--condition_on_prev_tokens"
-                shift ;;
             -h|--help) show_help ;;
             --) shift; break ;;
             *) echo "Invalid option: $1"; exit 1 ;;
@@ -191,7 +186,6 @@ Batch Sizes:   "${batch_sizes[*]}"
 Timestamp:     "${timestamp}"
 Extensions:    "${extensions}"
 Sleep Time:    ${sleep_time}
-Condition on Previous Tokens: ${condition_on_prev_tokens:+Yes}
 =============================
 EOF
 }
@@ -203,14 +197,13 @@ run_experiment() {
     local batch_size="$1"
     local experiment_dir="$2"
     local model_dir_name=$(basename "${experiment_dir}")
-    local output_filename="${model_dir_name}_b${batch_size}"
+    local output_filename="${model_dir_name}_b${batch_size}_seq"
 
     local log_file="${experiment_dir}/${output_filename}.log"
 
     echo "Running configuration:"
     echo "  - Batch size: ${batch_size}"
     echo "  - Timestamp: ${timestamp}"
-    echo "  - Condition on previous tokens: ${condition_on_prev_tokens}"
     echo "  - Output filename: ${output_filename}"
     echo "  - Input for new_wer_calculator.py: ${model_dir_name}/${output_filename}.json"
     # === FIX 2: Create directory for log ===
@@ -230,7 +223,6 @@ run_experiment() {
             --batch_size "${batch_size}" \
             --timestamps "${timestamp}" \
             --extensions "${extensions}" \
-            $condition_on_prev_tokens \
             --gold_standard || {
                 echo "ERROR: Transcription failed for batch ${batch_size}"
                 exit 1
@@ -264,7 +256,6 @@ main() {
     echo "Input Directory: ${input_dir}"
     echo "Output Directory: ${experiment_dir}"
     echo "Timestamp Type: ${timestamp}"
-    echo "Condition on Prev Tokens: ${condition_on_prev_tokens:+Yes}"
     echo "Total Configurations: ${total_configs}"
     echo "----------------------------------------"
 
