@@ -209,7 +209,6 @@ run_experiment() {
     local output_file="${experiment_dir}/${model_dir_name}_chunk${chunk_len}_beam${beam_size}_batch${batch_size}_${model_stride}.json"
 
     echo "Running configuration:"
-    echo "  - Buffer Length:    ${total_buffer}s"
     echo "  - Chunk Length:     ${chunk_len}s"
     echo "  - Batch Size:   ${batch_size}"
     echo "  - Log file:     ${log_filename}"
@@ -291,7 +290,7 @@ main() {
                 $((elapsed/60)) $((elapsed%60)) \
                 $((remaining/60)) $((remaining%60))
 
-            run_experiment "${batch_size}" "${chunk_len}" "${experiment_dir}"
+            run_experiment "${batch_size}" "${chunk_len}" "${experiment_dir}" "${model_stride}"
             ((count++))
         done
     done
