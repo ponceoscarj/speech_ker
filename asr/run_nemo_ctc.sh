@@ -306,7 +306,7 @@ main() {
                 $((elapsed/60)) $((elapsed%60)) \
                 $((remaining/60)) $((remaining%60))
             
-            run_experiment "$chunk" "$ctx" "$experiment_dir" "$batch_size"
+            run_experiment "$chunk" "$ctx" "$experiment_dir" "$batch_size" "$model_stride" 
             ((count++))
         done
     done
