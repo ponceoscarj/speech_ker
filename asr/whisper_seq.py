@@ -205,7 +205,7 @@ def main():
         try:
             entries, decode_time, names, batch_wers = process_batch(batch, processor, model, device, args, stats, batch_num)
             all_results.extend(entries)
-            trans_bar.update(len(batch))
+            trans_bar.update(len(batch), redraw=False)
 
             avg_batch_wer = round(sum(batch_wers)/len(batch_wers), 4) if batch_wers else None
             # trans_bar.set_postfix({
