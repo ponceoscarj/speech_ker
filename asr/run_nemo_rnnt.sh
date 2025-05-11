@@ -10,11 +10,15 @@
 # trap "echo -e '\nError: Script aborted due to error'; exit 1" ERR
 
 # Example Usage:
-# bash run_nemo_buffered.sh --model-path /path/to/model.nemo \
-#     --dataset-manifest /path/to/manifest.json 
-#     --output-dir /output \
-#     --total-buffers "4.0 6.0" --chunk-lengths "1.6 2.0" --batch-sizes "32 16" \
-#     --model-stride 4
+# bash run_nemo_rnnt.sh \
+#     --model-path /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/parakeet-tdt-0.6b-v2/parakeet-tdt-0.6b-v2.nemo \
+#     --dataset-manifest /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/work_files/asr_manifest.json \
+#     --output-dir /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/output \
+#     --chunk-lengths "20 40 60 80" \
+#     --contexts "0 3 5 10 15" \
+#     --batch-size "8" \
+#     --model-stride 4 \
+#     --merge-algo "middle"
 
 # ==============================================================================
 # Global Configuration and Defaults
