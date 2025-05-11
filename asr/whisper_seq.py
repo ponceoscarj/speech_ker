@@ -62,6 +62,14 @@ def process_batch(batch, processor, model, device, args, stats):
 
     # Inference
     start = time.time()
+
+        # ADD THIS BLOCK
+    start_time = time.time()
+    start_str = datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n🟢 STARTING BATCH {batch_num} at {start_str}")
+    print(f"🔢 Processing {len(batch)} files: {[p.name for p in paths]}")
+    logging.info(f"Starting batch {batch_num} at {start_str} with {len(batch)} files")
+
     with torch.inference_mode(), torch.cuda.amp.autocast():
         inputs = processor(
             audio_arrays,
@@ -183,7 +191,7 @@ def main():
     for batch in batch_iterator(data_iter, args.batch_size):
         batch_num += 1
         try:
-            entries, decode_time, names, batch_wers = process_batch(batch, processor, model, device, args, stats)
+            entries, decode_time, names, batch_wers = process_batch(batch, processor, model, device, args, stats, batch_num)
             all_results.extend(entries)
             trans_bar.update(len(batch))
 
