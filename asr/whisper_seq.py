@@ -184,8 +184,20 @@ def main():
     stats = {"total_wer": 0.0, "count": 0, "rtf_list": [], "time": 0.0}
     all_results = []
 
-    trans_bar = tqdm(total=total_files, desc="Transcribing", unit="file", colour="GREEN")        
-
+    trans_bar = tqdm(total=total_files, 
+                     desc="Transcribing", 
+                     unit="file", 
+                     colour="GREEN", 
+                     position=0, 
+                     leave=True, dynamic_ncols=True,
+                     bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
+                     )        
+    msg_bar = tqdm(
+        total=0, 
+        position=1, 
+        leave=False, 
+        bar_format="{desc}"
+    )    
     # Process
     batch_num = 0
     for batch in batch_iterator(data_iter, args.batch_size):
@@ -200,12 +212,15 @@ def main():
             #     'batch_wer': avg_batch_wer if avg_batch_wer is not None else 'N/A',
             #     'batch_time_s': f"{decode_time:.2f}"
             # })
-            trans_bar.refresh()
 
-            print(f"\n\nBatch {batch_num}: processed files → {names}")
-            if batch_wers:
-                print(f"Batch WERs → {batch_wers} | avg WER: {avg_batch_wer}")
-            print(f"Batch processing time → {decode_time:.2f}s\n")            
+            # Update message bar below progress
+            msg_bar.set_description_str(
+                f"Batch {batch_num} | "
+                f"Files: {names}\n"
+                f"WERs: {batch_wers} (avg: {avg_batch_wer})\n"
+                f"Time: {decode_time:.2f}s"
+            )
+            msg_bar.refresh()            
 
             for e in entries:
                 wer_str = f"{e.get('wer'):.4f}" if 'wer' in e else 'N/A'
