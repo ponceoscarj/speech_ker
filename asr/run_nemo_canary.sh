@@ -20,7 +20,7 @@
 # ==============================================================================
 # Global Configuration and Defaults
 # ==============================================================================
-readonly DEFAULT_PRETRAINED="nvidia/canary-1b-flash"
+readonly DEFAULT_PRETRAINED="nvidia/canary-1b"
 readonly DEFAULT_OUTPUT="./results"
 readonly DEFAULT_CHUNKS=(20 30 60 80)
 readonly DEFAULT_BATCHES=(4 3 2)
