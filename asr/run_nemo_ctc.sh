@@ -207,6 +207,7 @@ run_experiment() {
     local context="$2"
     local experiment_dir="$3"
     local batch_size="$4"
+    local model_stride="$5"
     local total_buffer=$(("$chunk_len + $context"))    
     local model_dir_name=$(basename "${experiment_dir}")
     local timestamp=$(date +'%Y%m%d_%H%M%S')
@@ -217,7 +218,7 @@ run_experiment() {
     
     local log_filename="${model_dir_name}_chunk${chunk_len_sanitized}_ctx${context_sanitized}_batch${batch_size}.log"
     local log_file="${experiment_dir}/${log_filename}"
-    local output_file="${experiment_dir}/${model_dir_name}_chunk${chunk_len_sanitized}_ctx${context_sanitized}_batch${batch_size}.json"
+    local output_file="${experiment_dir}/${model_dir_name}_chunk${chunk_len_sanitized}_ctx${context_sanitized}_batch${batch_size}_stride${model_stride}.json"
 
     echo "Running configuration:"
     echo "  - Buffer Length:    ${total_buffer}s"
