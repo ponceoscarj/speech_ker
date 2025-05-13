@@ -251,7 +251,6 @@ run_experiment() {
         echo -e "└───────────────────────────────────────────────┘\033[0m"
         python3 nemo_buffered_infer_rnnt.py \
             model_path="${model_path}" \
-            pretrained_name="${pretrained_name}" \
             dataset_manifest="${dataset_manifest}" \
             output_filename="${output_file}" \
             total_buffer_in_secs="${total_buffer}" \

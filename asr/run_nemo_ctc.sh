@@ -207,7 +207,6 @@ run_experiment() {
     local context="$2"
     local experiment_dir="$3"
     local batch_size="$4"
-    local model_stride="$5"
     local total_buffer=$(("$chunk_len + $context"))    
     local model_dir_name=$(basename "${experiment_dir}")
     local timestamp=$(date +'%Y%m%d_%H%M%S')
@@ -228,7 +227,7 @@ run_experiment() {
     echo "  - Log file:     ${log_filename}"
     
     # Initialize log with header
-    initialize_log_file "${log_file}" "${chunk_len}" "${context}" "${batch_size}"
+    initialize_log_file "${log_file}" "${chunk_len}" "${context}" "${batch_size}" "${model_stride}"
 
     {
         echo -e "\033[1;34m┌───────────────────────────────────────────────┐"
@@ -236,7 +235,6 @@ run_experiment() {
         echo -e "└───────────────────────────────────────────────┘\033[0m"
         python3 nemo_buffered_infer_ctc.py \
             model_path="${model_path}" \
-            pretrained_name="${pretrained_name}" \
             dataset_manifest="${dataset_manifest}" \
             output_filename="${output_file}" \
             total_buffer_in_secs="${total_buffer}" \
@@ -307,7 +305,7 @@ main() {
                 $((elapsed/60)) $((elapsed%60)) \
                 $((remaining/60)) $((remaining%60))
             
-            run_experiment "$chunk" "$ctx" "$experiment_dir" "$batch_size" "$model_stride" 
+            run_experiment "$chunk" "$ctx" "$experiment_dir" "$batch_size" 
             ((count++))
         done
     done
