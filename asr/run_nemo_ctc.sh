@@ -216,7 +216,7 @@ run_experiment() {
     local chunk_len_sanitized="${chunk_len//./_}"
     local context_sanitized="${context//./_}"    
     
-    local log_filename="${model_dir_name}_chunk${chunk_len_sanitized}_ctx${context_sanitized}_batch${batch_size}.log"
+    local log_filename="${model_dir_name}_chunk${chunk_len_sanitized}_ctx${context_sanitized}_batch${batch_size}_stride${model_stride}.log"
     local log_file="${experiment_dir}/${log_filename}"
     local output_file="${experiment_dir}/${model_dir_name}_chunk${chunk_len_sanitized}_ctx${context_sanitized}_batch${batch_size}_stride${model_stride}.json"
 
