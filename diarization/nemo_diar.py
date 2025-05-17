@@ -123,11 +123,13 @@ def main():
         print("Running Neural MSDD Diarizer...")
         diarizer = NeuralDiarizer(cfg=config)
     
-    results = diarizer.diarize()
+    diarizer.diarize()
 
-    for rttm in glob.glob(os.path.join(args.output_dir, '*.rttm')):
+    pred_dir = os.path.join(args.output_dir, 'pred_rttms')
+    for rttm in glob.glob(os.path.join(pred_dir, '*.rttm')):
         print(f"\nContents of {os.path.basename(rttm)}:")
-        print(open(rttm).read())
-        
+        with open(rttm, 'r') as f:
+            print(f.read())
+
 if __name__ == "__main__":
     main()
