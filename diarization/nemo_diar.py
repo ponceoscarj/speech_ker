@@ -96,14 +96,14 @@ def main():
 
     # Load and update config
     config = OmegaConf.load(config_path)
-
+    config.device = 'cuda:0' 
     # Check CUDA
     print("CUDA available:", torch.cuda.is_available())
     # and—if you want to see what device NeMo thinks it’s on:
     print("cfg.device:", getattr(config.diarizer, "device", "<not set>"))
 
     
-
+    
     config.num_workers = args.num_workers
     config.diarizer.manifest_filepath = manifest_file
     config.diarizer.out_dir = args.output_dir
