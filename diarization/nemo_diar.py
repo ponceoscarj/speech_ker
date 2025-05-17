@@ -2,6 +2,7 @@ import argparse
 from omegaconf import OmegaConf
 import glob, os
 import wget
+import torch
 from nemo.collections.asr.models import ClusteringDiarizer
 from nemo.collections.asr.models.msdd_models import NeuralDiarizer
 
@@ -24,7 +25,8 @@ python diarization.py --diarizer_type system_vad \
     --ignore_overlap True \
     --min_duration_off 0.15 \
     --min_duration_on 0.1 \
-    --pad_onset 0.1
+    --pad_onset 0.1 \
+    --print_rttm # only if you want to print the RTTM file contents on your terminal
 
 '''
 
@@ -86,6 +88,11 @@ def main():
         config_url = f"https://raw.githubusercontent.com/NVIDIA/NeMo/main/examples/speaker_tasks/diarization/conf/inference/{args.config_yml}"
         print(f"Downloading config from {config_url}")
         config_path = wget.download(config_url, args.work_dir)
+    
+    # Check CUDA    
+    print("CUDA available:", torch.cuda.is_available())
+    # and—if you want to see what device NeMo thinks it’s on:
+    print("cfg.device:", getattr(config.diarizer, "device", "<not set>"))
 
     # Generate manifest file if missing
     manifest_file = os.path.join(args.work_dir, f"{args.manifest_name}.json")
