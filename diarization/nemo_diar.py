@@ -72,6 +72,8 @@ def main():
                         help='Removes short speech segments if the duration is less than the specified minimum duration')
     parser.add_argument('--pad_onset', type=float, default=0.1,
                         help=' Adds the specified duration at the beginning of each speech segment')
+    parser.add_argument('--print_rttm', action='store_true',
+                        help='Print RTTM file contents (default: False)')
     args = parser.parse_args()
 
     # Create directories if they don't exist
@@ -124,12 +126,13 @@ def main():
         diarizer = NeuralDiarizer(cfg=config)
     
     diarizer.diarize()
-
-    pred_dir = os.path.join(args.output_dir, 'pred_rttms')
-    for rttm in glob.glob(os.path.join(pred_dir, '*.rttm')):
-        print(f"\nContents of {os.path.basename(rttm)}:")
-        with open(rttm, 'r') as f:
-            print(f.read())
+    
+    if args.print_rttm:
+        pred_dir = os.path.join(args.output_dir, 'pred_rttms')
+        for rttm in glob.glob(os.path.join(pred_dir, '*.rttm')):
+            print(f"\nContents of {os.path.basename(rttm)}:")
+            with open(rttm, 'r') as f:
+                print(f.read())
 
 if __name__ == "__main__":
     main()
