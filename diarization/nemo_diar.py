@@ -1,6 +1,6 @@
 import argparse
 from omegaconf import OmegaConf
-import os
+import glob, os
 import wget
 from nemo.collections.asr.models import ClusteringDiarizer
 from nemo.collections.asr.models.msdd_models import NeuralDiarizer
@@ -123,7 +123,11 @@ def main():
         print("Running Neural MSDD Diarizer...")
         diarizer = NeuralDiarizer(cfg=config)
     
-    diarizer.diarize()
+    results = diarizer.diarize()
 
+    for rttm in glob.glob(os.path.join(args.output_dir, '*.rttm')):
+        print(f"\nContents of {os.path.basename(rttm)}:")
+        print(open(rttm).read())
+        
 if __name__ == "__main__":
     main()
