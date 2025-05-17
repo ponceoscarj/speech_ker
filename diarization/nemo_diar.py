@@ -89,11 +89,6 @@ def main():
         print(f"Downloading config from {config_url}")
         config_path = wget.download(config_url, args.work_dir)
     
-    # Check CUDA    
-    print("CUDA available:", torch.cuda.is_available())
-    # and—if you want to see what device NeMo thinks it’s on:
-    print("cfg.device:", getattr(config.diarizer, "device", "<not set>"))
-
     # Generate manifest file if missing
     manifest_file = os.path.join(args.work_dir, f"{args.manifest_name}.json")
     if not os.path.exists(manifest_file):
@@ -101,6 +96,14 @@ def main():
 
     # Load and update config
     config = OmegaConf.load(config_path)
+
+    # Check CUDA
+    print("CUDA available:", torch.cuda.is_available())
+    # and—if you want to see what device NeMo thinks it’s on:
+    print("cfg.device:", getattr(config.diarizer, "device", "<not set>"))
+
+    
+
     config.num_workers = args.num_workers
     config.diarizer.manifest_filepath = manifest_file
     config.diarizer.out_dir = args.output_dir
