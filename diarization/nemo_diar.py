@@ -96,14 +96,13 @@ def main():
 
     # Load and update config
     config = OmegaConf.load(config_path)
-    config.device = 'cuda:0' 
-    # Check CUDA
-    print("CUDA available:", torch.cuda.is_available())
-    # and—if you want to see what device NeMo thinks it’s on:
-    print("cfg.device:", getattr(config.diarizer, "device", "<not set>"))
+    if torch.cuda.is_available():
+        config.diarizer.device = "cuda"
+    else:
+        config.diarizer.device = "cpu"  
+    print(f"→ Using device: {config.diarizer.device} (CUDA available: {torch.cuda.is_available()})")    
 
-    
-    
+
     config.num_workers = args.num_workers
     config.diarizer.manifest_filepath = manifest_file
     config.diarizer.out_dir = args.output_dir
@@ -129,11 +128,11 @@ def main():
 
     # Execute diarization
     if args.diarizer_type == 'system_vad':
-        print("Running System VAD Diarizer...")
-        diarizer = ClusteringDiarizer(cfg=config)
+        print("Running System VAD Diarizer on {config.diarizer.device}")
+        diarizer = ClusteringDiarizer(cfg=config, device=config.diarizer.device)
     else:
-        print("Running Neural MSDD Diarizer...")
-        diarizer = NeuralDiarizer(cfg=config)
+        print("Running Neural MSDD Diarizer on {config.diarizer.device}")
+        diarizer = NeuralDiarizer(cfg=config, device=config.diarizer.device)    
     
     diarizer.diarize()
     
