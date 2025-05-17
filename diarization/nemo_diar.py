@@ -129,11 +129,12 @@ def main():
     # Execute diarization
     if args.diarizer_type == 'system_vad':
         print("Running System VAD Diarizer on {config.diarizer.device}")
-        diarizer = ClusteringDiarizer(cfg=config, device=config.diarizer.device)
+        diarizer = ClusteringDiarizer(cfg=config)
     else:
         print("Running Neural MSDD Diarizer on {config.diarizer.device}")
-        diarizer = NeuralDiarizer(cfg=config, device=config.diarizer.device)    
+        diarizer = NeuralDiarizer(cfg=config)
     
+    diarizer = diarizer.to(device=config.diarizer.device)    
     diarizer.diarize()
     
     if args.print_rttm:
