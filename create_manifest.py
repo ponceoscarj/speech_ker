@@ -66,8 +66,25 @@ def create_manifest(data_dir, work_dir, output_file_name,
 
     wav_files = [f for f in os.listdir(data_dir) if f.endswith('.wav')]
 
+    transcript_lines = []
+    if url_transcript_text:
+        if os.path.isdir(url_transcript_text):
+            all_txt_files = sorted([os.path.join(url_transcript_text, f) for f in os.listdir(url_transcript_text) if f.endswith('.txt')])
+            for txt_file in all_txt_files:
+                with open(txt_file, 'r', encoding='utf-8') as f:
+                    transcript_lines.append(f.read().strip())
+        elif os.path.isfile(url_transcript_text):
+            with open(url_transcript_text, 'r', encoding='utf-8') as f:
+                transcript_lines = [line.strip() for line in f.readlines()]
+
+
     for i, wav_file in enumerate(wav_files):
-        wav_file_base = os.path.splitext(wav_file)[0]
+        base = os.path.splitext(wav_file)[0]
+        wav_path = os.path.join(data_dir, wav_file)
+        txt_file = base + '.txt'
+        txt_path = os.path.join(data_dir, txt_file)
+        exists_txt = os.path.isfile(txt_path)
+        
         entry = None
 
         if manifest_type == "asr":
@@ -83,7 +100,7 @@ def create_manifest(data_dir, work_dir, output_file_name,
             }
 
             if include_ground_truth:
-                txt_file = wav_file_base + ".txt"
+                txt_file = base + ".txt"
                 txt_path = os.path.join(data_dir, txt_file)
 
                 try:
@@ -98,24 +115,17 @@ def create_manifest(data_dir, work_dir, output_file_name,
 
 
         elif manifest_type == "diarization":
-            if url_transcript_text is not None:
-                with open(url_transcript_text, 'r') as f:
-                    text = f.readlines()
-                    text = text[i]
-            elif url_transcript_text is None:
-                text = '-'
-            
+            txt = transcript_lines[i] if i < len(transcript_lines) else None
             entry = {
-                "audio_filepath": os.path.join(data_dir, wav_file),
+                "audio_filepath": wav_path,
                 "duration": None,
                 "offset": 0,
                 "label": "infer",
-                "text": text,
+                "text": txt,
                 "num_speakers": None,
                 "rttm_filepath": None,
                 "uem_filepath": None
             }
-
         elif manifest_type == "dataset":
             entry = {
                 "audio_filepath": os.path.join(data_dir, wav_file),
@@ -124,14 +134,12 @@ def create_manifest(data_dir, work_dir, output_file_name,
             }
 
         elif manifest_type == 'aligner':
-            with open(url_transcript_text, 'r') as f:
-                text = f.readlines()
+            txt = transcript_lines[i] if i < len(transcript_lines) else None
             entry = {
-                "audio_filepath": os.path.join(data_dir, wav_file),
-                "text": text[i]
+                "audio_filepath": wav_path,
+                "text": txt
             }
-
-        if entry:
+        if entry: 
             manifest_data.append(entry)
 
     os.makedirs(work_dir, exist_ok=True)
