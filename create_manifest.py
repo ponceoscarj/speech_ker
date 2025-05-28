@@ -64,7 +64,7 @@ def create_manifest(data_dir, work_dir, output_file_name,
     
     manifest_data = []
 
-    wav_files = [f for f in os.listdir(data_dir) if f.endswith('.wav')]
+    wav_files = sorted(f for f in os.listdir(data_dir) if f.endswith('.wav'))
 
     transcript_lines = []
     if url_transcript_text:
@@ -76,7 +76,6 @@ def create_manifest(data_dir, work_dir, output_file_name,
         elif os.path.isfile(url_transcript_text):
             with open(url_transcript_text, 'r', encoding='utf-8') as f:
                 transcript_lines = [line.strip() for line in f.readlines()]
-
 
     for i, wav_file in enumerate(wav_files):
         base = os.path.splitext(wav_file)[0]
@@ -126,19 +125,22 @@ def create_manifest(data_dir, work_dir, output_file_name,
                 "rttm_filepath": None,
                 "uem_filepath": None
             }
-        elif manifest_type == "dataset":
-            entry = {
-                "audio_filepath": os.path.join(data_dir, wav_file),
-                "duration": None,
-                "text": None
-            }
+        elif manifest_type == "aligner":
+            # one TXT per WAV in the same directory:
+            base, _ = os.path.splitext(wav_file)
+            txt_path = os.path.join(url_transcript_text, base + '.txt')
+            if os.path.isfile(txt_path):
+                with open(txt_path, 'r', encoding='utf-8') as f:
+                    text = f.read().strip()
+            else:
+                print(f"Warning: missing transcript for {wav_file}")
+                text = "-"
 
-        elif manifest_type == 'aligner':
-            txt = transcript_lines[i] if i < len(transcript_lines) else None
             entry = {
                 "audio_filepath": wav_path,
-                "text": txt
+                "text": text
             }
+
         if entry: 
             manifest_data.append(entry)
 
