@@ -44,7 +44,24 @@ def read_gold_transcription(audio_path):
     return txt_path.read_text().strip() if txt_path.exists() else None
 
 def calculate_wer(reference, hypothesis):
-    return jiwer.wer(reference, hypothesis)
+     # Normalized transformation
+    norm_transform = jiwer.Compose([
+        jiwer.ToLowerCase(),
+        jiwer.RemovePunctuation(),
+        jiwer.Strip(),
+        jiwer.ExpandCommonEnglishContractions(),
+        jiwer.RemoveMultipleSpaces()
+    ])
+
+    # Raw WER
+    raw_measures = jiwer.compute_measures(reference, hypothesis)
+
+    # Normalized WER
+    norm_measures = jiwer.compute_measures(reference, hypothesis,
+                                           truth_transform=norm_transform,
+                                           hypothesis_transform=norm_transform)
+
+    return raw_measures, norm_measures
   
 def chunk_audio(audio_array, sr, chunk_sec):
     chunk_size = int(sr * chunk_sec)
@@ -106,7 +123,7 @@ def main():
     main_bar = tqdm(total=total_files, desc="Transcribing", unit="file")
     wer_bar = tqdm(total=total_files, desc="WER_Calc", leave=False)
     results, batch_rtfs = [], []
-    total_wer, wer_count = 0, 0
+    total_rwer, total_nwer = 0.0, 0.0
     total_audio_duration = 0.0
     start_all = time.time()
     
@@ -170,11 +187,30 @@ def main():
                 gold = read_gold_transcription(path)
                 entry["text"] = gold or "N/A"
                 if gold:
-                    w = calculate_wer(gold, full_text)
-                    entry["wer"] = w
-                    total_wer += w
+                    raw_measures, norm_measures = calculate_wer_breakdown(gold, full_text)
+                    entry.update({
+                      # Raw metrics
+                      "rWER": raw_measures["wer"],
+                      "rInsertions": raw_measures["insertions"],
+                      "rDeletions": raw_measures["deletions"],
+                      "rSubstitutions": raw_measures["substitutions"],
+                      "rHits": raw_measures["hits"],
+                      "rRefLen": raw_measures["truth_length"],
+                
+                      # Normalized metrics
+                      "nWER": norm_measures["wer"],
+                      "nInsertions": norm_measures["insertions"],
+                      "nDeletions": norm_measures["deletions"],
+                      "nSubstitutions": norm_measures["substitutions"],
+                      "nHits": norm_measures["hits"],
+                      "nRefLen": norm_measures["truth_length"]
+                    })
+        
+                    total_rwer += raw_measures["wer"]
+                    total_nwer += norm_measures["wer"]
                     wer_count += 1
                     wer_bar.update(1)
+                  
             results.append(entry)
             main_bar.update(1)
     
@@ -186,8 +222,8 @@ def main():
     total_time = time.time() - start_all
     
     if args.gold_standard and wer_count > 0:
-        avg_wer = total_wer / wer_count
-        print(f"\nAverage WER over {wer_count} files: {avg_wer:.4f}\n")
+        print(f"\nAverage Raw WER: {total_rwer / wer_count:.4f}")
+        print(f"Average Normalized WER: {total_nwer / wer_count:.4f}")
     
       
     # ── Save Outputs ───────────────────────────────────────────────────────
