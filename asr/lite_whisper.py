@@ -124,6 +124,10 @@ def main():
     wer_bar = tqdm(total=total_files, desc="WER_Calc", leave=False)
     results, batch_rtfs = [], []
     total_rwer, total_nwer = 0.0, 0.0
+    total_insertions = 0
+    total_deletions = 0
+    total_substitutions = 0
+    wer_count = 0
     total_audio_duration = 0.0
     start_all = time.time()
     
@@ -205,7 +209,10 @@ def main():
                       "nHits": norm_measures["hits"],
                       "nRefLen": norm_measures["truth_length"]
                     })
-        
+                  
+                    total_insertions += raw_measures["insertions"]
+                    total_deletions += raw_measures["deletions"]
+                    total_substitutions += raw_measures["substitutions"]
                     total_rwer += raw_measures["wer"]
                     total_nwer += norm_measures["wer"]
                     wer_count += 1
@@ -222,8 +229,18 @@ def main():
     total_time = time.time() - start_all
     
     if args.gold_standard and wer_count > 0:
-        print(f"\nAverage Raw WER: {total_rwer / wer_count:.4f}")
-        print(f"Average Normalized WER: {total_nwer / wer_count:.4f}")
+        avg_rwer = total_rwer / wer_count
+        avg_nwer = total_nwer / wer_count
+        avg_insertions = total_insertions / wer_count
+        avg_deletions = total_deletions / wer_count
+        avg_substitutions = total_substitutions / wer_count
+    
+        print("\n===== WER Summary =====")
+        print(f"Average Normalized WER:  {avg_nwer:.2f}")
+        print(f"Average Raw WER:         {avg_rwer:.2f}")
+        print(f"Average Insertions:      {avg_insertions:.2f}")
+        print(f"Average Deletions:       {avg_deletions:.2f}")
+        print(f"Average Substitutions:   {avg_substitutions:.2f}")
     
       
     # ── Save Outputs ───────────────────────────────────────────────────────
