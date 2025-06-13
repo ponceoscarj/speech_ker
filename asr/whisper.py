@@ -148,6 +148,10 @@ def main():
     wer_bar = tqdm(total=total_files, desc="WER_calculation", leave=False)
 
     results = []
+    total_rwer = 0.0
+    total_insertions = 0
+    total_deletions = 0
+    total_substitutions = 0
     total_wer = 0
     valid_wer_count = 0
     start_time = time.time()
@@ -222,14 +226,19 @@ def main():
                             "nRefLen": norm_measures["truth_length"]
                         })
                       
+                        # ✅ Add this block to accumulate totals for summary
                         total_wer += norm_measures["wer"]
+                        total_rwer += raw_measures["wer"]
+                        total_insertions += raw_measures["insertions"]
+                        total_deletions += raw_measures["deletions"]
+                        total_substitutions += raw_measures["substitutions"]
                         valid_wer_count += 1
                         wer_bar.update(1)
                         wer_bar.set_postfix(current_wer=f"{norm_measures['wer']:.2f}")
                       
                 # Safely print based on whether WER was calculated
                 if args.gold_standard and gold_text:
-                  print(f'Processed {args.batch_size}. WER = {wer}')
+                  print(f'Processed {args.batch_size}. nWER = {norm_measures["wer"]:.2f}')
                 else:
                   print(f'Processed {args.batch_size}.')
                   
