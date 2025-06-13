@@ -49,8 +49,17 @@ def read_gold_transcription(audio_path):
     return None
 
 def calculate_wer(reference, hypothesis):
-    return jiwer.wer(reference, hypothesis)
-
+    norm_transform = jiwer.Compose([
+        jiwer.ToLowerCase(),
+        jiwer.RemovePunctuation(),
+        jiwer.Strip(),
+        jiwer.ExpandCommonEnglishContractions(),
+        jiwer.RemoveMultipleSpaces()
+    ])
+    raw = jiwer.compute_measures(reference, hypothesis)
+    norm = jiwer.compute_measures(reference, hypothesis, truth_transform=norm_transform, hypothesis_transform=norm_transform)
+    return raw, norm
+  
 # REMOVED: Tee class and log file handling
 
 def main():
@@ -194,12 +203,29 @@ def main():
                     entry["text"] = gold_text or "N/A"
                     
                     if gold_text:
-                        wer = calculate_wer(entry["text"], entry["pred_text"])
-                        entry["wer"] = wer
-                        total_wer += wer
+                        raw_measures, norm_measures = calculate_wer_breakdown(entry["text"], entry["pred_text"])
+                        entry.update({
+                            # Raw WER metrics
+                            "rWER": raw_measures["wer"],
+                            "rInsertions": raw_measures["insertions"],
+                            "rDeletions": raw_measures["deletions"],
+                            "rSubstitutions": raw_measures["substitutions"],
+                            "rHits": raw_measures["hits"],
+                            "rRefLen": raw_measures["truth_length"],
+                
+                            # Normalized WER metrics
+                            "nWER": norm_measures["wer"],
+                            "nInsertions": norm_measures["insertions"],
+                            "nDeletions": norm_measures["deletions"],
+                            "nSubstitutions": norm_measures["substitutions"],
+                            "nHits": norm_measures["hits"],
+                            "nRefLen": norm_measures["truth_length"]
+                        })
+                      
+                        total_wer += norm_measures["wer"]
                         valid_wer_count += 1
                         wer_bar.update(1)
-                        wer_bar.set_postfix(current_wer=f"{wer:.2f}")
+                        wer_bar.set_postfix(current_wer=f"{norm_measures['wer']:.2f}")
                       
                 # Safely print based on whether WER was calculated
                 if args.gold_standard and gold_text:
@@ -257,8 +283,18 @@ def main():
       print("\nWarning: Total audio duration is zero, cannot calculate RTF.")
   
     if args.gold_standard and valid_wer_count > 0:
-        print(f"\nAverage WER: {total_wer/valid_wer_count:.2f}")
-    print(f"\nProcessing complete. Results saved to {results_file}")
+        avg_nwer = total_wer / valid_wer_count
+        avg_rwer = total_rwer / valid_wer_count
+        avg_insertions = total_insertions / valid_wer_count
+        avg_deletions = total_deletions / valid_wer_count
+        avg_substitutions = total_substitutions / valid_wer_count
+    
+        print("\n===== WER Summary =====")
+        print(f"Average Normalized WER:  {avg_nwer:.2f}")
+        print(f"Average Raw WER:         {avg_rwer:.2f}")
+        print(f"Average Insertions:      {avg_insertions:.2f}")
+        print(f"Average Deletions:       {avg_deletions:.2f}")
+        print(f"Average Substitutions:   {avg_substitutions:.2f}")
 
 if __name__ == "__main__":
     main()
