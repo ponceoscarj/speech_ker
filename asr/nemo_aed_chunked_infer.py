@@ -256,7 +256,7 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
             # normalized text → split into words
             normed_ref = norm_transform(ref).split()
             normed_hyp = norm_transform(hyp).split()
-            norm = compute_measures(normed_ref, normed_hyp)
+            norm = compute_measures(" ".join(normed_ref), " ".join(normed_hyp))
 
             rows.append({
                 "audio_filepath": s["audio_filepath"],
