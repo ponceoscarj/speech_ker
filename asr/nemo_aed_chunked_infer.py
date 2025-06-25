@@ -301,9 +301,7 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
             "total_ref":  total_ref,
         }
 
-        avg_json = output_filename.replace(
-            ".json", "_both_wer_micro.json"
-            
+        avg_json = output_filename.replace(".json", "_both_wer_micro.json")
         with open(avg_json, "w") as jf:
             json.dump(micro_metrics, jf, indent=2)
             
