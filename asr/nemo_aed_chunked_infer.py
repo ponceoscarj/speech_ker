@@ -68,7 +68,6 @@ from nemo.collections.asr.parts.utils.transcribe_utils import (
 from nemo.core.config import hydra_runner
 from nemo.utils import logging
 
-
 @dataclass
 class TranscriptionConfig:
     """
@@ -233,7 +232,7 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
     logging.info(f"Finished writing predictions to {output_filename}!")
 
     if cfg.calculate_wer:
-        output_manifest_w_wer, total_res, _ = cal_write_wer(
+        output_manifest_w_wer, total_res, sample_scores = cal_write_wer(
             pred_manifest=output_filename,
             pred_text_attr_name=pred_text_attr_name,
             clean_groundtruth_text=cfg.clean_groundtruth_text,
@@ -241,9 +240,10 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
             use_cer=cfg.use_cer,
             output_filename=None,
         )
-        if output_manifest_w_wer:
-            logging.info(f"Writing prediction and error rate of each sample to {output_manifest_w_wer}!")
-            logging.info(f"{total_res}")
+        breakdown_csv = output_filename.replace('.json', '_breakdown.csv')
+        sample_scores.to_csv(breakdown_csv, index=False)
+        logging.info(f"Wrote per-sample WER breakdown to {breakdown_csv}")
+        logging.info(f"{total_res}")
 
     return cfg
 
