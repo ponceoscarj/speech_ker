@@ -276,6 +276,19 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
         breakdown_csv = output_filename.replace(".json", "_both_wer_breakdown.csv")
         df.to_csv(breakdown_csv, index=False)
 
+        avg_metrics = df[[
+            "raw_wer", "norm_wer",
+            "raw_sub", "raw_ins", "raw_del",
+            "norm_sub", "norm_ins", "norm_del"
+        ]].mean()
+
+        avg_json = output_filename.replace(
+            ".json", "_both_wer_averages.json"
+        )
+        with open(avg_json, "w") as jf:
+            json.dump(avg_metrics.to_dict(), jf, indent=2)
+            
+        logging.info(f"Wrote average metrics to {avg_json}")
         logging.info(f"Wrote raw & normalized WER breakdown to {breakdown_csv}")
 
     return cfg
