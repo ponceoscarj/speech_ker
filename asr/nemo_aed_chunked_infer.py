@@ -277,35 +277,29 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
         df = pd.DataFrame(rows)
         breakdown_csv = output_filename.replace(".json", "_both_wer_breakdown.csv")
         df.to_csv(breakdown_csv, index=False)
+        logging.info(f"Wrote raw & normalized breakdown to {breakdown_csv}")
 
         total_subs = df["raw_sub"].sum()
         total_ins  = df["raw_ins"].sum()
         total_dels = df["raw_del"].sum()
         total_ref  = df["raw_ref_len"].sum()   # ← you need to record truth_length per row!
-
-        micro_wer = (total_subs + total_ins + total_dels) / total_ref
-        micro_sub_rate = total_subs / total_ref
-        micro_ins_rate = total_ins  / total_ref
-        micro_del_rate = total_dels / total_ref
     
         # Pack into a dict
         micro_metrics = {
-            "micro_wer":      micro_wer,
-            "micro_sub_rate": micro_sub_rate,
-            "micro_ins_rate": micro_ins_rate,
-            "micro_del_rate": micro_del_rate,
-            # if you still want raw counts:
-            "total_subs": total_subs,
-            "total_ins":  total_ins,
-            "total_dels": total_dels,
-            "total_ref":  total_ref,
+            "micro_wer":      (total_subs + total_ins + total_dels) / total_ref,
+            "micro_sub_rate": total_subs / total_ref,
+            "micro_ins_rate": total_ins  / total_ref,
+            "micro_del_rate": total_dels / total_ref,
+            "total_subs":     total_subs,
+            "total_ins":      total_ins,
+            "total_dels":     total_dels,
+            "total_ref":      total_ref,
         }
 
         avg_json = output_filename.replace(".json", "_both_wer_micro.json")
         with open(avg_json, "w") as jf:
             json.dump(micro_metrics, jf, indent=2)
             
-        logging.info(f"Wrote average metrics to {avg_json}")
         logging.info(f"Wrote avg JSON → {avg_json}")
 
     return cfg
