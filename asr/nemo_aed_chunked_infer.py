@@ -266,7 +266,7 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
                 "raw_sub":        raw["substitutions"],
                 "raw_ins":        raw["insertions"],
                 "raw_del":        raw["deletions"],
-                "raw_ref_len": raw["truth_length"],      
+                "raw_ref_len": len(ref_words),      
                 # norm
                 "norm_wer":       norm["wer"],
                 "norm_sub":       norm["substitutions"],
