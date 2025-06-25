@@ -250,12 +250,13 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
             ref = s.get("text", "")                     # gold text
             hyp = s.get(pred_text_attr_name, "")        # model pred
 
+            # raw metrics
             raw = compute_measures(ref, hyp)
-            norm = compute_measures(
-                ref, hyp,
-                truth_transform=norm_transform,
-                hypothesis_transform=norm_transform
-            )
+
+            # normalized text → split into words
+            normed_ref = norm_transform(ref).split()
+            normed_hyp = norm_transform(hyp).split()
+            norm = compute_measures(normed_ref, normed_hyp)
 
             rows.append({
                 "audio_filepath": s["audio_filepath"],
