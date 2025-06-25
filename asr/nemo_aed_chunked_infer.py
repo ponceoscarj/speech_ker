@@ -67,6 +67,9 @@ from nemo.collections.asr.parts.utils.transcribe_utils import (
 )
 from nemo.core.config import hydra_runner
 from nemo.utils import logging
+import json
+from jiwer import compute_measures, Compose, ToLowerCase, RemovePunctuation, Strip, ExpandCommonEnglishContractions, RemoveMultipleSpaces
+
 
 @dataclass
 class TranscriptionConfig:
@@ -232,18 +235,46 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
     logging.info(f"Finished writing predictions to {output_filename}!")
 
     if cfg.calculate_wer:
-        output_manifest_w_wer, total_res, sample_scores = cal_write_wer(
-            pred_manifest=output_filename,
-            pred_text_attr_name=pred_text_attr_name,
-            clean_groundtruth_text=cfg.clean_groundtruth_text,
-            langid=cfg.langid,
-            use_cer=cfg.use_cer,
-            output_filename=None,
-        )
-        breakdown_csv = output_filename.replace('.json', '_breakdown.csv')
-        sample_scores.to_csv(breakdown_csv, index=False)
-        logging.info(f"Wrote per-sample WER breakdown to {breakdown_csv}")
-        logging.info(f"{total_res}")
+        with open(output_filename, "r") as f:
+            samples = [json.loads(line) for line in f]
+         norm_transform = Compose([
+            ToLowerCase(),
+            RemovePunctuation(),
+            Strip(),
+            ExpandCommonEnglishContractions(),
+            RemoveMultipleSpaces()
+        ])
+         rows = []
+        for s in samples:
+            ref = s.get("text", "")                     # gold text
+            hyp = s.get(pred_text_attr_name, "")        # model pred
+
+            raw = compute_measures(ref, hyp)
+            norm = compute_measures(
+                ref, hyp,
+                truth_transform=norm_transform,
+                hypothesis_transform=norm_transform
+            )
+
+            rows.append({
+                "audio_filepath": s["audio_filepath"],
+                # raw
+                "raw_wer":        raw["wer"],
+                "raw_sub":        raw["substitutions"],
+                "raw_ins":        raw["insertions"],
+                "raw_del":        raw["deletions"],
+                # norm
+                "norm_wer":       norm["wer"],
+                "norm_sub":       norm["substitutions"],
+                "norm_ins":       norm["insertions"],
+                "norm_del":       norm["deletions"],
+            })
+            import pandas as pd
+            df = pd.DataFrame(rows)
+            breakdown_csv = output_filename.replace(".json", "_both_wer_breakdown.csv")
+            df.to_csv(breakdown_csv, index=False)
+
+            logging.info(f"Wrote raw & normalized WER breakdown to {breakdown_csv}")
 
     return cfg
 
