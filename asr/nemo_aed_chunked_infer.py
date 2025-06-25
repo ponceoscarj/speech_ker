@@ -69,7 +69,7 @@ from nemo.core.config import hydra_runner
 from nemo.utils import logging
 import json
 from jiwer import compute_measures, Compose, ToLowerCase, RemovePunctuation, Strip, ExpandCommonEnglishContractions, RemoveMultipleSpaces
-
+import pandas as pd
 
 @dataclass
 class TranscriptionConfig:
@@ -244,7 +244,7 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
             ExpandCommonEnglishContractions(),
             RemoveMultipleSpaces()
         ])
-         rows = []
+        rows = []
         for s in samples:
             ref = s.get("text", "")                     # gold text
             hyp = s.get(pred_text_attr_name, "")        # model pred
@@ -269,12 +269,11 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
                 "norm_ins":       norm["insertions"],
                 "norm_del":       norm["deletions"],
             })
-            import pandas as pd
-            df = pd.DataFrame(rows)
-            breakdown_csv = output_filename.replace(".json", "_both_wer_breakdown.csv")
-            df.to_csv(breakdown_csv, index=False)
+        df = pd.DataFrame(rows)
+        breakdown_csv = output_filename.replace(".json", "_both_wer_breakdown.csv")
+        df.to_csv(breakdown_csv, index=False)
 
-            logging.info(f"Wrote raw & normalized WER breakdown to {breakdown_csv}")
+        logging.info(f"Wrote raw & normalized WER breakdown to {breakdown_csv}")
 
     return cfg
 
