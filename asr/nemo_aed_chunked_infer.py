@@ -237,7 +237,8 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
     if cfg.calculate_wer:
         with open(output_filename, "r") as f:
             samples = [json.loads(line) for line in f]
-         norm_transform = Compose([
+            
+        norm_transform = Compose([
             ToLowerCase(),
             RemovePunctuation(),
             Strip(),
@@ -269,6 +270,7 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
                 "norm_ins":       norm["insertions"],
                 "norm_del":       norm["deletions"],
             })
+            
         df = pd.DataFrame(rows)
         breakdown_csv = output_filename.replace(".json", "_both_wer_breakdown.csv")
         df.to_csv(breakdown_csv, index=False)
