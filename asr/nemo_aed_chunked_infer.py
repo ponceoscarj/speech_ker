@@ -250,7 +250,11 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
         for s in samples:
             ref = s.get("text", "")                     # gold text
             hyp = s.get(pred_text_attr_name, "")        # model pred
-
+            
+            split the reference (and hypothesis if you like) so we can count words
+            ref_words = ref.split()
+            hyp_words = hyp.split()
+            
             # raw metrics
             raw = compute_measures(ref, hyp)
 
