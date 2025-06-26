@@ -251,7 +251,7 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
             ref = s.get("text", "")                     # gold text
             hyp = s.get(pred_text_attr_name, "")        # model pred
             
-            split the reference (and hypothesis if you like) so we can count words
+            # split the reference (and hypothesis if you like) so we can count words
             ref_words = ref.split()
             hyp_words = hyp.split()
             
