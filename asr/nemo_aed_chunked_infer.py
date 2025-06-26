@@ -245,24 +245,19 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
             ExpandCommonEnglishContractions(),
             RemoveMultipleSpaces()
         ])
-        
         rows = []
         for s in samples:
             ref = s.get("text", "")                     # gold text
             hyp = s.get(pred_text_attr_name, "")        # model pred
-            
-            # split the reference (and hypothesis if you like) so we can count words
-            ref_words = ref.split()
-            hyp_words = hyp.split()
-            
+
             # raw metrics
             raw = compute_measures(ref, hyp)
 
             # normalized text → split into words
-            normed_ref = " ".join(norm_transform(ref).split())
-            normed_hyp = " ".join(norm_transform(hyp).split())
-            norm = compute_measures(normed_ref, normed_hyp)
-            
+            normed_ref = norm_transform(ref).split()
+            normed_hyp = norm_transform(hyp).split()
+            norm = compute_measures(" ".join(normed_ref), " ".join(normed_hyp))
+
             rows.append({
                 "audio_filepath": s["audio_filepath"],
                 # raw
@@ -270,7 +265,6 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
                 "raw_sub":        raw["substitutions"],
                 "raw_ins":        raw["insertions"],
                 "raw_del":        raw["deletions"],
-                "raw_ref_len": len(ref_words),      
                 # norm
                 "norm_wer":       norm["wer"],
                 "norm_sub":       norm["substitutions"],
@@ -281,30 +275,21 @@ def main(cfg: TranscriptionConfig) -> TranscriptionConfig:
         df = pd.DataFrame(rows)
         breakdown_csv = output_filename.replace(".json", "_both_wer_breakdown.csv")
         df.to_csv(breakdown_csv, index=False)
-        logging.info(f"Wrote raw & normalized breakdown to {breakdown_csv}")
 
-        total_subs = df["raw_sub"].sum()
-        total_ins  = df["raw_ins"].sum()
-        total_dels = df["raw_del"].sum()
-        total_ref  = df["raw_ref_len"].sum()   # ← you need to record truth_length per row!
-    
-        # Pack into a dict
-        micro_metrics = {
-            "micro_wer":      (total_subs + total_ins + total_dels) / total_ref,
-            "micro_sub_rate": total_subs / total_ref,
-            "micro_ins_rate": total_ins  / total_ref,
-            "micro_del_rate": total_dels / total_ref,
-            "total_subs":     total_subs,
-            "total_ins":      total_ins,
-            "total_dels":     total_dels,
-            "total_ref":      total_ref,
-        }
+        avg_metrics = df[[
+            "raw_wer", "norm_wer",
+            "raw_sub", "raw_ins", "raw_del",
+            "norm_sub", "norm_ins", "norm_del"
+        ]].mean()
 
-        avg_json = output_filename.replace(".json", "_both_wer_micro.json")
+        avg_json = output_filename.replace(
+            ".json", "_both_wer_averages.json"
+        )
         with open(avg_json, "w") as jf:
-            json.dump(micro_metrics, jf, indent=2)
+            json.dump(avg_metrics.to_dict(), jf, indent=2)
             
-        logging.info(f"Wrote avg JSON → {avg_json}")
+        logging.info(f"Wrote average metrics to {avg_json}")
+        logging.info(f"Wrote raw & normalized WER breakdown to {breakdown_csv}")
 
     return cfg
 
