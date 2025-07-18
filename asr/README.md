@@ -5,9 +5,9 @@ The list of models to be evaluated are available on [HuggingFace Open ASR Leader
 The architecture characteristics of the models are stated at the end of this `README` file. 
 
 ## Requirements
-1. Create conda environment with `python 3.10.12` (more stable)
+### 1. Create conda environment 
 ```bash
-conda create --name speech_ker python==3.10.12
+conda create --name speech_ker python==3.10.12 # more stable
 conda activate speech_ker
 ```
 
