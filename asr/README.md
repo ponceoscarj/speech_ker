@@ -11,31 +11,34 @@ conda create --name speech_ker python==3.10.12 # more stable
 conda activate speech_ker
 ```
 
-2. Install latest torch - check your CUDA version [here](https://pytorch.org/get-started/locally/)
+### 2. Install torch 
+Your torch must be compatible with your CUDA version. Check [here](https://pytorch.org/get-started/locally/).
 ```bash
-# The CUDA version of the sandbox-AI is 12.4
-# you can check cuda version with nvidia-smi
+# Check cuda version
+nvidia-smi
+# The CUDA version of our cloud is 12.4
 pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 ```
 
-3. Install NeMo 
-### Dependencies
+### 3. Install NeMo 
+#### Dependencies
 ```bash
 sudo apt-get update && sudo apt-get install -y libsndfile1 ffmpeg
 pip install Cython packaging
 ```
 
-4. Install NeMo
+#### NeMo
 ```bash
 pip install "nemo_toolkit[all]"===999 #version 999 does not exist but it will trigger nemo_toolkit to show you all the version, choose the latest.
 pip install "nemo_toolkit[all]"===2.3.0rc2 #this is the latest version as of April 11th, 2025 - pip install "nemo_toolkit[all]"===2.4.0rc2
 ```
 
-5. Install the `huggingface_hub` package to download models:
+### 5. The `huggingface_hub` package to download models:
 ```bash
 pip install -U "huggingface_hub[cli]"
 ```
-
+### 6. FlashAttention [Optional]
+[OPTIONAL] FlashAttention can speed up both training and inference. 
 6. Install [FlashAttention](https://github.com/Dao-AILab/flash-attention) (for Speed-up):
 
 **Requirements**:
