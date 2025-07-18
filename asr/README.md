@@ -33,31 +33,40 @@ pip install "nemo_toolkit[all]"===999 #version 999 does not exist but it will tr
 pip install "nemo_toolkit[all]"===2.3.0rc2 #this is the latest version as of April 11th, 2025 - pip install "nemo_toolkit[all]"===2.4.0rc2
 ```
 
-### 5. The `huggingface_hub` package to download models:
+### 5. Install Huggingface Hub
+This is needed to download all ASR models. 
 ```bash
 pip install -U "huggingface_hub[cli]"
 ```
-### 6. FlashAttention [Optional]
-[OPTIONAL] FlashAttention can speed up both training and inference. 
-6. Install [FlashAttention](https://github.com/Dao-AILab/flash-attention) (for Speed-up):
 
-**Requirements**:
-```yaml
-- CUDA toolkit or ROCm toolkit:     *(Install manually according to your GPU)*
-- PyTorch 2.2 or above: 		    Already met with nemo conda environment
-- `packaging`:                      `pip install packaging`
-- `ninja`:                          `pip install ninja`
-```
-
-**Install FlashAttention:**
-```bash
-MAX_JOBS=4 pip install flash-attn --no-build-isolation
- ```
-
-7. Install other dependencies
+### 6. Install other dependencies
 ```
 pip install jiwer
 ```
+
+### 7. Install FlashAttention [OPTIONAL]
+FlashAttention can speed up both training and inference. [Link](https://github.com/Dao-AILab/flash-attention) for a detailed explanation. 
+
+#### Requirements
+- CUDA 12.0 and above (Check version with `nvidia-smi`)
+- CUDA toolkit (Chech with `nvcc --version`)
+```bash
+pip install packaging
+pip install ninja
+```
+- Check `ninja` is installed correctl with `ninja --version` then `echo $?`. This should return exit code `0`. If not, check flash attention link to debug.
+
+#### Flash Attention
+**Option 1:** Should work for most environments:
+```bash
+pip install flash-attn --no-build-isolation
+```
+**Optiona 2:** if your machine has less than 96GB of RAM and lots of CPU cores, `ninja` might run too manu prallel compilation jobs that could exhaust the amount of RAM. To limit the number of parallale compilation jobs, you can set the environment variable with `MAX_JOBS` before installation
+```bash
+MAX_JOBS=4 pip install flash-attn --no-build-isolation
+```
+
+
 
 ## Manifest generation
 All NeMo ASR models need a manifest file which can be created with the `create_manifest.py` script. Instructions for manifest generation for ASR models are within the script. 
