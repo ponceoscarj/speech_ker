@@ -24,6 +24,6 @@ Split an audio with:
 
 ## Patient-doctor conversations - toy examples
 
-- OSCE conversations: https://springernature.figshare.com/articles/dataset/Collection_of_simulated_medical_exams/16550013?backTo=%2Fcollections%2FA_dataset_of_simulated_patient-physician_medical_interviews_with_a_focus_on_respiratory_cases%2F5545842&file=30598530
+- [OSCE conversations](https://springernature.figshare.com/articles/dataset/Collection_of_simulated_medical_exams/16550013?backTo=%2Fcollections%2FA_dataset_of_simulated_patient-physician_medical_interviews_with_a_focus_on_respiratory_cases%2F5545842&file=30598530)
 
-- Primock57: https://github.com/babylonhealth/primock57
+- [Primock57](https://github.com/babylonhealth/primock57)
