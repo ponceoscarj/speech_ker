@@ -1,47 +1,11 @@
-Benchmark of ASR models
-==============
+# Benchmark of ASR models
 
-The list of models to be evaluated are available on [Huggingface open asr leaderboard](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard)
+The list of models to be evaluated are available on [HuggingFace Open ASR Leaderboard](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard)
 
-
-# NVIDIA NeMo Models
-
-## Model Characteristics
-Brief description of the models from NVIDIA NeMo.
-
-### Transformer (AED) Models
-| Model Name                  | Encoder          | Decoder      | NeMo Call             | Python Script         |
-|-----------------------------|------------------|--------------|-----------------------|-----------------------|
-| `nvidia/canary-1b-flash`    | FastConformer    | Transformer  | EncDecMultiTaskModel  | `nemo_aed_chunked_infer`   |
-| `nvidia/canary-1b`          | FastConformer    | Transformer  | EncDecMultiTaskModel  | `nemo_aed_chunked_infer`   |
-| `nvidia/canary-180m-flash`  | FastConformer    | Transformer  | EncDecMultiTaskModel  | `nemo_aed_chunked_infer`   |
-
-### RNNT Models
-| Model Name                              | Encoder          | Decoder      | NeMo Call             | Python Script         |
-|-----------------------------------------|------------------|--------------|-----------------------|-----------------------|
-| `nvidia/parakeet-tdt-1.1b`             | FastConformer    | RNNT loss    | EncDecRNNTBPEModel    | `nemo_buffered_infer_rnnt` |
-| `nvidia/parakeet-rnnt-1.1b`            | FastConformer    | RNNT loss    | EncDecRNNTBPEModel    | `nemo_buffered_infer_rnnt` |
-| `nvidia/parakeet-rnnt-0.6b`            | FastConformer    | RNNT loss    | EncDecRNNTBPEModel    | `nemo_buffered_infer_rnnt` |
-| `nvidia/stt_en_fastconformer_transducer_large` | FastConformer | RNNT loss    | EncDecRNNTBPEModel    | `nemo_buffered_infer_rnnt` |
-| `stt_en_conformer_transducer_small`    | Conformer        | RNNT loss    | EncDecRNNTBPEModel    | `nemo_buffered_infer_rnnt` |
-
-### CTC Models
-| Model Name                              | Encoder          | Decoder      | NeMo Call             | Python Script         |
-|-----------------------------------------|------------------|--------------|-----------------------|-----------------------|
-| `nvidia/parakeet-ctc-1.1b`             | FastConformer    | CTC loss     | EncDecCTCModelBPE     | `nemo_buffered_infer_ctc`  |
-| `nvidia/parakeet-ctc-0.6b`             | FastConformer    | CTC loss     | EncDecCTCModelBPE     | `nemo_buffered_infer_ctc`  |
-| `nvidia/stt_en_conformer_ctc_large`    | Conformer        | CTC loss     | EncDecCTCModelBPE     | `nemo_buffered_infer_ctc`  |
-| `nvidia/stt_en_fastconformer_ctc_large`| FastConformer    | CTC loss     | EncDecCTCModelBPE     | `nemo_buffered_infer_ctc`  |
-| `nvidia/stt_en_conformer_ctc_small`    | Conformer        | CTC loss     | EncDecCTCModelBPE     | `nemo_buffered_infer_ctc`  |
-
-### Hybrid Models
-| Model Name                   | Encoder          | Decoder       | NeMo Call       | Python Script         |
-|------------------------------|------------------|---------------|-----------------|-----------------------|
-| `nvidia/parakeet-tdt_ctc-110m` | FastConformer   | Hybrid TDT-CTC | ASRModel?       | `nemo_buffered_infer_rnnt` |
-
+The architecture characteristics of the models are stated at the end of this `README` file. 
 
 ## Requirements
-1. Create conda environment with python 3.10.12 - more stable
+1. Create conda environment with `python 3.10.12` (more stable)
 ```bash
 conda create --name speech_ker python==3.10.12
 conda activate speech_ker
@@ -54,7 +18,8 @@ conda activate speech_ker
 pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 ```
 
-3. Install NeMo important dependencies
+3. Install NeMo 
+### Dependencies
 ```bash
 sudo apt-get update && sudo apt-get install -y libsndfile1 ffmpeg
 pip install Cython packaging
@@ -62,12 +27,33 @@ pip install Cython packaging
 
 4. Install NeMo
 ```bash
-python -m pip install 'git+https://github.com/NVIDIA/NeMo.git@main#egg=nemo_toolkit[all]'
-```
-OR
-```bash
 pip install "nemo_toolkit[all]"===999 #version 999 does not exist but it will trigger nemo_toolkit to show you all the version, choose the latest.
-pip install "nemo_toolkit[all]"===2.3.0rc2 #this is the latest version as of April 11th, 2025
+pip install "nemo_toolkit[all]"===2.3.0rc2 #this is the latest version as of April 11th, 2025 - pip install "nemo_toolkit[all]"===2.4.0rc2
+```
+
+5. Install the `huggingface_hub` package to download models:
+```bash
+pip install -U "huggingface_hub[cli]"
+```
+
+6. Install [FlashAttention](https://github.com/Dao-AILab/flash-attention) (for Speed-up):
+
+**Requirements**:
+```yaml
+- CUDA toolkit or ROCm toolkit:     *(Install manually according to your GPU)*
+- PyTorch 2.2 or above: 		    Already met with nemo conda environment
+- `packaging`:                      `pip install packaging`
+- `ninja`:                          `pip install ninja`
+```
+
+**Install FlashAttention:**
+```bash
+MAX_JOBS=4 pip install flash-attn --no-build-isolation
+ ```
+
+7. Install other dependencies
+```
+pip install jiwer
 ```
 
 ## Manifest generation
@@ -76,12 +62,7 @@ All NeMo ASR models need a manifest file which can be created with the `create_m
 Introduce this manifest when running the models under the `dataset_manifest` parameter.
 
 ## Download NeMo models
-1. Install the huggingface_hub package:
-```bash
-pip install -U "huggingface_hub[cli]"
-```
-
-2. Download models form huggingface: 
+1. Download models form huggingface: 
 Download the `.nemo` file to run the models. 
 ```bash
 huggingface-cli download [REPO_ID] --include [FILE_NAME] --local-dir [SAVE_DIR]
@@ -181,20 +162,6 @@ cd CrisperWhisper
  pip install jiwer # for WER calculation
  ```
 
-4. Install [FlashAttention](https://github.com/Dao-AILab/flash-attention) (for Speed-up):
-   
-**Requirements**:
-```yaml
-- CUDA toolkit or ROCm toolkit:     *(Install manually according to your GPU)*
-- PyTorch 2.2 or above: 		    Already met with nemo conda environment
-- `packaging`:                      `pip install packaging`
-- `ninja`:                          `pip install ninja`
-```
-
-**Install FlashAttention:**
-```bash
-MAX_JOBS=4 pip install flash-attn --no-build-isolation
- ```
 
 5. Install the models
 - Login into huggingface and introduce your token. 
