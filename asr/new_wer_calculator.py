@@ -39,10 +39,17 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
-        '-i', '--input-file',
+        '-ii', '--ind_results',
         required=True,
-        help='Path to input JSON file (JSON lines format)'
+        help='Path to json file with individual results'
     )
+
+    parser.add_argument(
+        '-io', '--overall_results',
+        required=True,
+        help='Path to json file with overall results'
+    )
+
     parser.add_argument(
         '-v', '--verbose',
         action='store_true',
@@ -52,19 +59,37 @@ def main():
     args = parser.parse_args()
     
     # Validate input file
-    if not os.path.isfile(args.input_file):
-        sys.exit(f"Error: Input file not found: {args.input_file}")
+    if not os.path.isfile(args.ind_results):
+        sys.exit(f"Error: Input file not found: {args.ind_results}")
+    
+    if not os.path.isfile(args.overall_results):
+        sys.exit(f"Error: Input file not found: {args.overall_results}")
+    
     
     if args.verbose:
-        print(f"Processing file: {args.input_file}")
+        print(f"Processing files: {args.ind_results} & {args.overall_results}")
     
     entries = []
-    total_wer_norm = 0.0
+    
     total_wer_raw = 0.0
+    total_subs_raw = 0.0
+    total_del_raw = 0.0
+    total_ins_raw = 0.0
+    total_hits_raw = 0.0
+
+    total_wer_norm = 0.0
+    total_subs_norm = 0.0
+    total_del_norm = 0.0
+    total_ins_norm = 0.0
+    total_hits_norm = 0.0
+
+    total_ref_words = 0.0
+    total_pred_words = 0.0
+    total_pred_norm_words = 0.0
     count = 0
 
     # Read and process entries
-    with open(args.input_file, 'r') as f:
+    with open(args.ind_results, 'r') as f:
         for line_num, line in enumerate(f, 1):
             try:
                 entry = json.loads(line)
@@ -80,11 +105,10 @@ def main():
                     "insertions": wer_raw[3],
                     "hits": wer_raw[4]
                 }
-                total_wer_raw += wer_raw[0]
 
                 # Normalized WER
                 hyp_normalized = normalizer(hyp)
-                entry['norm_pred_text'] = hyp_normalized
+                entry['pred_text_norm'] = hyp_normalized
                 wer_norm = calculate_wer(ref, hyp_normalized)
                 entry['wer_normalized'] = {
                     "wer": wer_norm[0],
@@ -93,17 +117,31 @@ def main():
                     "insertions": wer_norm[3],
                     "hits": wer_norm[4]
                 }
+
                 # Add word counts
-                entry['ref_word_count'] = ref_wc
-                entry['pred_word_count'] = pred_wc
-                entry['norm_pred_word_count'] = norm_pred_wc
+                ref_words = len(ref.split())
+                hyp_words = len(hyp.split)
+                entry['ref_word_count'] = ref_words
+                entry['pred_word_count'] = hyp_words
+                entry['pred_norm_word_count'] = hyp_normalized
 
                 # Totals
                 total_wer_raw += wer_raw[0]
+                total_subs_raw += wer_raw[1]
+                total_del_raw += wer_raw[2]
+                total_ins_raw += wer_raw[3]
+                total_hits_raw += wer_raw[4]
+            
                 total_wer_norm += wer_norm[0]
-                total_ref_words += ref_wc
-                total_pred_words += pred_wc
-                total_norm_pred_words += norm_pred_wc
+                total_subs_norm += wer_norm[1]
+                total_del_norm += wer_norm[2]
+                total_ins_norm += wer_norm[3]
+                total_hits_norm += wer_norm[4]
+
+
+                total_ref_words += ref_words
+                total_pred_words += hyp_words
+                total_pred_norm_words += hyp_normalized
 
                 count += 1
                 entries.append(entry)
@@ -116,22 +154,49 @@ def main():
             except json.JSONDecodeError:
                 sys.exit(f"Error: Invalid JSON at line {line_num}")
 
-    print('\nnew_wer_calculator.py\n',args.input_file, '\n')
+    # print('\nnew_wer_calculator.py\n',args.input_file, '\n')
 
     # Write back modified entries
-    with open(args.input_file, 'w') as f:
+    with open(args.ind_results, 'w') as f:
         for entry in entries:
             f.write(json.dumps(entry) + '\n')
+
+    with open(args.overall_results, 'r') as f:
+        overall = json.load(f)
+        overall["mean_words_ref"] = total_ref_words
+        overall["mean_words_pred"] = total_pred_words
+        overall["mean_words_pred_norm"] = total_pred_norm_words
+
+    overall_wer_raw = {
+        "mean_wer_raw":   total_wer_raw/count,
+        "mean_subs_raw":  total_subs_raw/count,
+        "mean_del_raw":   total_del_raw/count,
+        "mean_ins_raw":   total_ins_raw/count,
+        "mean_hits_raw":  total_hits_raw/count
+    }
+
+    overall_wer_norm = {
+        "wer_norm":  total_wer_norm/count,
+        "subs_norm": total_subs_norm/count,
+        "del_norm":  total_del_norm/count,
+        "ins_norm":  total_ins_norm/count,
+        "hits_norm": total_hits_norm/count
+    }
+
+    with open(args.overall_results, 'w') as f: 
+        f.write(json.dumps(overall) + '\n')
+        f.write(json.dumps(overall_wer_raw) + '\n')
+        f.write(json.dumps(overall_wer_norm) + '\n')
     
     if count > 0:
         print(f"\nResults:")
         print(f"Processed entries: {count}")
-        print(f"Average Raw WER: {total_wer_raw / count:.2f}%")
-        print(f"Average Normalized WER: {total_wer_norm / count:.2f}%")
-        print(f"Updated file: {args.input_file}")
-        print(f"New keys added: 'wer_raw', 'wer_normalized', 'norm_pred_text'")
+        print(f"Average Raw WER: {overall_wer_raw['mean_wer_raw']:.2f}%")
+        print(f"Average Normalized WER: {overall_wer_norm['wer_norm']:.2f}%")
+        print(f"Updated files: {args.ind_results} & {args.overall_results}")
     else:
         print("No valid entries processed.")
 
 if __name__ == "__main__":
     main()
+
