@@ -11,7 +11,7 @@ conda create --name speech_ker python==3.10.12 # more stable
 conda activate speech_ker
 ```
 
-### 2. Install torch 
+### 2. Install torch & transformers
 Your torch must be compatible with your CUDA version. Check [here](https://pytorch.org/get-started/locally/).
 ```bash
 # Check cuda version
@@ -40,8 +40,10 @@ pip install -U "huggingface_hub[cli]"
 ```
 
 ### 6. Install other dependencies
-```
+```bash
 pip install jiwer
+pip install librosa
+pip install --upgrade transformers 
 ```
 
 ### 7. Install FlashAttention [OPTIONAL]
@@ -68,10 +70,6 @@ MAX_JOBS=4 pip install flash-attn --no-build-isolation
 
 
 
-## Manifest generation
-All NeMo ASR models need a manifest file which can be created with the `create_manifest.py` script. Instructions for manifest generation for ASR models are within the script. 
-
-Introduce this manifest when running the models under the `dataset_manifest` parameter.
 
 ## Download NeMo models
 1. Download models form huggingface: 
