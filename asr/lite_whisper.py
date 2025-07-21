@@ -106,6 +106,8 @@ def main():
             device_map="auto",
             low_cpu_mem_usage=True
         )
+
+        
         bar.update(1)
         processor = AutoProcessor.from_pretrained(args.processor_model)
       
