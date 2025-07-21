@@ -3,6 +3,15 @@
 ## Model Characteristics
 Brief description of the models from NVIDIA NeMo.
 
+
+
+## Manifest generation
+All NeMo ASR models need a manifest file which can be created with the `create_manifest.py` script. Instructions for manifest generation for ASR models are within the script. 
+
+Introduce this manifest when running the models under the `dataset_manifest` parameter.
+
+
+
 ### Transformer (AED) Models
 | Model Name                  | Encoder          | Decoder      | NeMo Call             | Python Script         |
 |-----------------------------|------------------|--------------|-----------------------|-----------------------|
