@@ -159,10 +159,15 @@ def main():
                 t0 = time.time()
                 model_inputs = processor(prompt,
                     to_process,
-                    sampling_rate=16000,
-                    return_tensors="pt"
+                    return_tensors="pt",
+                    device=device,
                     # padding=True
                 ).to(device)
+
+                # print("Model Inputs:")
+                # for key, value in model_inputs.items():
+                #     if isinstance(value, torch.Tensor):
+                #         print(f"{key}: shape={value.shape}, device={value.device}")                
     
                 with torch.inference_mode(), torch.cuda.amp.autocast():
                     model_outputs = model.generate(**model_inputs, 
