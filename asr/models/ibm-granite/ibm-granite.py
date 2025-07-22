@@ -128,6 +128,7 @@ def main():
     # wer_count = 0
     total_audio_duration = 0.0
     start_all = time.time()
+
     
     for batch_start in range(0, total_files, args.batch_sizes):
         batch_files = files[batch_start:batch_start + args.batch_sizes]
@@ -224,7 +225,8 @@ def main():
     with open(meta_file, "w") as f:
         json.dump({
             "processing_time_s": total_time,
-            "audio_duration_s": total_audio_duration,
+            "total_audio_duration_s": total_audio_duration,
+            "total_n_files": total_files,
             "real_time_factor": rtf_all,
             "batch_rtfs": batch_rtfs
         }, f, indent=2)
