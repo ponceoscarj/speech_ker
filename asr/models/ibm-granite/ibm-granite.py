@@ -11,6 +11,7 @@ python ibm-granite.py \
                 --chunk-lengths 30 \
                 --batch-sizes 1 \
                 --sleep-time 5 \
+                --extensions .wav \
                 --system_prompt /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/ibm-granite/system-prompt_ibm-granite.txt \
                 --user_prompt /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/ibm-granite/user-prompt_ibm-granite.txt
 
@@ -77,6 +78,8 @@ def main():
                         help="Optional sleep time between batches (not used currently)")
     parser.add_argument("--system_prompt", type=str,
                         help="Prompt instruction for the system")
+    parser.add_argument("--extensions", nargs="+", default=[".wav", ".mp3", ".flac"],
+                     help="Audio file extensions to process")    
     parser.add_argument("--user_prompt", type=str, 
                         help="Prompt instruction for the user")
 
