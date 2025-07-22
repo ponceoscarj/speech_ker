@@ -15,10 +15,6 @@ python ibm-granite.py \
                 --system_prompt /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/ibm-granite/system-prompt_ibm-granite.txt \
                 --user_prompt /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/ibm-granite/user-prompt_ibm-granite.txt
 
-
-Notes:
---extensions .wav . mp3 #can accept multiple
-In --output_dir insert the correct model, be as specific as possible (e.g., canary-1b, canary-1b-flash, canary-180m)
 '''
 import argparse
 import json
