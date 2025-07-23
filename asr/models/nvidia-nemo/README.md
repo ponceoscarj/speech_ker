@@ -1,5 +1,36 @@
 # nvidia NeMo Models
 
+
+## Manifest file
+The input of all NeMo ASR models is a manifest file that has a `json` format. This manifest can be generated with the `create_manifest.py` file.
+
+Every line of the `json` file contains the absolute path of the audio file to be transcribed with additional information. Example:
+
+```bash 
+{"audio_filepath": "/abs_path/to/audio_file.wav", 
+"duration": null, # this is null 
+"taskname": "asr", # the task is ASR
+"source_lang": "en", # English
+"target_lang": "en",  # English
+"pnc": "yes", # output with punctuation yes/no
+"text": "hello doctor. hello will, i hope you had a good day ...."} # Gold-standard transcription
+```
+
+### Manifest file generation
+Generate the manifest file with `create_manifest.py` within this folder.
+
+```bash
+# Example
+python create_manifest.py asr \
+    --data_dir /abs_path/to/audio_files_&_txt_files \
+    --work_dir /abs_path/to/save/manifest_file \
+    --output_file asr_manifest \
+    --source_lang en \
+    --target_lang en \
+    --include_ground_truth \
+    --pnc yes
+ ```
+
 ## Model Characteristics
 Brief description of the models from NVIDIA NeMo.
 
