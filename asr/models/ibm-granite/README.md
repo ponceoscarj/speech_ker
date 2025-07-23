@@ -1,5 +1,7 @@
 # IBM-granite
 
+## Chunk-based inference
+IBM recommends a maximum of 60 seconds for each chunk [link](https://www.ibm.com/new/announcements/ibm-granite-3-3-speech-recognition-refined-reasoning-rag-loras). 
 
 ## Download models
 

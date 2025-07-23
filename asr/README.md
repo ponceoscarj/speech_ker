@@ -30,7 +30,8 @@ pip install Cython packaging
 #### NeMo
 ```bash
 pip install "nemo_toolkit[all]"===999 #version 999 does not exist but it will trigger nemo_toolkit to show you all the version, choose the latest.
-pip install "nemo_toolkit[all]"===2.3.0rc2 #this is the latest version as of April 11th, 2025 - pip install "nemo_toolkit[all]"===2.4.0rc2
+# pip install "nemo_toolkit[all]"===2.3.0rc2 #this is the latest version as of April 11th, 2025 - 
+pip install "nemo_toolkit[all]"===2.4.0rc2
 ```
 
 ### 5. Install Huggingface Hub
@@ -75,7 +76,7 @@ MAX_JOBS=4 pip install flash-attn --no-build-isolation
 1. Download models form huggingface: 
 Download the `.nemo` file to run the models. 
 ```bash
-huggingface-cli download [REPO_ID] --include [FILE_NAME] --local-dir [SAVE_DIR]
+huggingface-cli download [REPO_ID] --local-dir [SAVE_DIR]
 ```
 - `[REPO_ID]` is the model repository from huggingface. Example `nvidia/parakeet-tdt-1.1b`
 - `[FILE_NAME]` path to the file name that ends with `.nemo`. Example `parakeet-tdt-1.1b.nemo`
