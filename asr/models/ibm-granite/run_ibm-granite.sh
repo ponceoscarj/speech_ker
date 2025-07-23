@@ -9,12 +9,12 @@
 # Example Usage:
 #
 # bash run_ibm-granite.sh \
-#   --model /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models_outputs \
-#   --input-dir /home/ext_ponceponte_oscar_mayo_edu/speech_ker/audio_files/toy \
+#   --model /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models_weights/ibm-granite \
+#   --input-dir /home/ext_ponceponte_oscar_mayo_edu/speech_ker/audio_files/valid_audio \
 #   --output-dir /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/output \
 #   --system-prompt /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/ibm-granite/system-prompt_ibm-granite.txt \
 #   --user-prompt /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/ibm-granite/user-prompt_ibm-granite.txt \
-#   --chunk-lengths "20 30" \
+#   --chunk-lengths "20 40 60" \
 #   --batch-sizes "1" \
 #   --extensions ".wav" \
 #   --sleep-time 10
