@@ -8,8 +8,9 @@ python ibm-granite.py \
                 --output_dir /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/output/ibm-granite \
                 --model /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models_outputs \
                 --output_filename ibm-granite \
-                --chunk-lengths 30 \
-                --batch-sizes 1 \
+                --chunk_lengths 30 \
+                --batch_sizes 1 \
+                --max_new_tokens 200 \
                 --sleep-time 5 \
                 --extensions .wav \
                 --system_prompt /home/ext_ponceponte_oscar_mayo_edu/speech_ker/asr/models/ibm-granite/system-prompt_ibm-granite.txt \
@@ -45,6 +46,8 @@ def main():
     parser.add_argument("--output_filename", default="")
     parser.add_argument("--chunk_lengths", type=int, default=30,
                         help="length of each chunk in seconds")
+    parser.add_argument("--max_new_tokens", type=int, default=200,
+                        help="maximum number of tokens in the output")
     parser.add_argument("--batch_sizes", type=int, default=4,
                         help="number of chunks per batch")
     parser.add_argument("--extensions", nargs='+', default=[".wav"])
@@ -63,7 +66,7 @@ def main():
     model = AutoModelForSpeechSeq2Seq.from_pretrained(
         args.model, trust_remote_code=True, torch_dtype=dtype,
         device_map='auto', low_cpu_mem_usage=True
-    )
+    ).to('cuda')
     processor = AutoProcessor.from_pretrained(args.model)
     tokenizer = processor.tokenizer
     # prepare prompts
@@ -104,13 +107,13 @@ def main():
         durations = [ci['duration'] for ci in batch]
         t0 = time.time()
         inputs_proc = processor(
-            prompt_ids,
+            [prompt_ids]*len(inputs),
             inputs,
             return_tensors='pt',
             padding=True
         ).to(device)
         with torch.inference_mode(), torch.cuda.amp.autocast():
-            outputs = model.generate(**inputs_proc, max_new_tokens=200)
+            outputs = model.generate(**inputs_proc, max_new_tokens=args.max_new_tokens)
         # split off prompt tokens
         n_prompt = inputs_proc['input_ids'].shape[-1]
         texts = tokenizer.batch_decode(
