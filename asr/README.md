@@ -35,7 +35,7 @@ pip install "nemo_toolkit[all]"===2.4.0rc2
 ```
 
 ### 5. Install Huggingface Hub
-This is needed to download all ASR models. 
+Needed to download all ASR models. 
 ```bash
 pip install -U "huggingface_hub[cli]"
 ```
@@ -70,90 +70,23 @@ MAX_JOBS=4 pip install flash-attn --no-build-isolation
 ```
 
 
-
-
-## Download NeMo models
-1. Download models form huggingface: 
-Download the `.nemo` file to run the models. 
-```bash
-huggingface-cli download [REPO_ID] --local-dir [SAVE_DIR]
+## Preparing dataset
+The data required for running the ASR benchamrk are: 1) audio files saved in `.wav` format and 2) gold-standard transcriptions (human annotation) saved in the `.txt` format. Files corresponding to the same  should have the same name if they correspond to the same conversation and saved under a unique validation or testing folder. 
 ```
-- `[REPO_ID]` is the model repository from huggingface. Example `nvidia/parakeet-tdt-1.1b`
-- `[FILE_NAME]` path to the file name that ends with `.nemo`. Example `parakeet-tdt-1.1b.nemo`
-- `[SAVE_DIR]` is your target directory. Inside asr/models.
-
-
-## Running the models
-1. General parameters for running each model
-- `model_path`: Local path to .nemo file 
-- `pretrained_name`: Model name
-- `audio_dir`: Directory containing WAV files
-- `dataset_manifest`: Path to the manifest file
-- `output_filename`: Output results path
-
-### Example for CTC Models - nemo_buffered_infer_ctc
-
-```bash
-python speech_to_text_buffered_infer_ctc.py \
-    model_path="stt_en_conformer_ctc_small.nemo" \
-    pretrained_name="stt_en_conformer_ctc_small" \
-    dataset_manifest="/path/to/manifest.json" \
-    output_filename="/output/path/results.json" \
-    total_buffer_in_secs=4.0 \
-    chunk_len_in_secs=1.6 \
-    model_stride=4 \
-    batch_size=1 \
-    clean_groundtruth_text=True \
-    langid='en'
+audio_files
+│   
+└───valid_files
+│   │   afap024.wav
+│   │   afap024.txt
+│   └── ...
+└───test_files
+    │   afpp294.wav
+    │   afpp294.txt
+    └── ...
 ```
 
-
-### Example for RNNT Models - nemo_buffered_infer_rnnt
-
-#### Middle Token Merge
-```bash
-python speech_to_text_buffered_infer_rnnt.py \
-    model_path=null \
-    pretrained_name=null \
-    dataset_manifest="<remove or path to manifest>" \
-    output_filename="<remove or specify output filename>" \
-    total_buffer_in_secs=4.0 \
-    chunk_len_in_secs=1.6 \
-    model_stride=4 \
-    batch_size=32 \
-    clean_groundtruth_text=True \
-    langid='en'
-```
-
-#### Longer Common Subsequence (LCS) Merge algorithm
-
-```bash
-python speech_to_text_buffered_infer_rnnt.py \
-    model_path=null \
-    pretrained_name=null \
-    dataset_manifest="<remove or path to manifest>" \
-    output_filename="<remove or specify output filename>" \
-    total_buffer_in_secs=4.0 \
-    chunk_len_in_secs=1.6 \
-    model_stride=4 \
-    batch_size=32 \
-    merge_algo="lcs" \
-    lcs_alignment_dir=<OPTIONAL: Some path to store the LCS alignments> 
-```
-
-
-### Example for Canary Models - nemo_aed_chunked_infer
-
-```bash
-python speech_to_text_aed_chunked_infer.py \
-    model_path=null \
-    pretrained_name="nvidia/canary-1b-flash" \
-    dataset_manifest="<(optional) path to manifest>" \
-    output_filename="<(optional) specify output filename>" \
-    chunk_len_in_secs=40.0 \
-    batch_size=16 \
-    decoding.beam.beam_size=1
-```
+## Validation and Testing
+Your dataset should be randomly split into 20% and 80% for validation and testing respectively. Validation will consist of hyperparameter tuning. Because none of the ASR models was trained to transcribe long audios, they require chunking with or without stride ([explanation](https://huggingface.co/blog/asr-chunking)).  Parameters like this need to be tuned and the list of parameters to be tuned are available within each model's folder. The parameters to be tuned are available within each folder.
 
 
 # CrisperWhisper and Distil-Whisper-large-v3.5
